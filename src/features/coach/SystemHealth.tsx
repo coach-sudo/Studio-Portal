@@ -10,10 +10,14 @@ import {
   Settings2,
   ShieldCheck,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useId, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Dialog, Section, Status } from "../../components/Primitives";
 import {
+  beginCalendarAuthorization,
+  checkMissedCalendarChanges,
+  manageCalendarRoleSelection,
+  type CalendarRoleSelection,
   checkSystemHealth,
   retryHealthIssue,
   reviewCalendarConflict,
@@ -347,6 +351,147 @@ export function ConnectionsPanel({
   );
 }
 
+function CalendarRoleEditor({ studio }: { studio: string }) {
+  const formId = useId();
+  const [selection, setSelection] = useState<CalendarRoleSelection>();
+  const [feedback, setFeedback] = useState("");
+  const calendars = useMutation({
+    mutationFn: (next?: CalendarRoleSelection) =>
+      manageCalendarRoleSelection(studio, next),
+    onSuccess: (data, next) => {
+      setSelection(data.roles);
+      setFeedback(next ? "Calendar roles saved." : "");
+    },
+    onError: (error) =>
+      setFeedback(
+        error instanceof Error
+          ? error.message
+          : "Calendar roles could not be read.",
+      ),
+  });
+  const catchUp = useMutation({
+    mutationFn: (calendar: string) =>
+      checkMissedCalendarChanges(studio, calendar),
+    onSuccess: (result) =>
+      setFeedback(
+        result.state === "held"
+          ? "Incoming Calendar processing is held for this deployment."
+          : `Checked one page of changes. ${result.imported} applied and ${result.review} marked for review.`,
+      ),
+    onError: () =>
+      setFeedback(
+        "The Calendar check could not finish. Try again to resume from the saved checkpoint.",
+      ),
+  });
+  const toggle = (role: "availability" | "incoming", id: string) =>
+    setSelection(
+      (current) =>
+        current && {
+          ...current,
+          [role]: current[role].includes(id)
+            ? current[role].filter((value) => value !== id)
+            : [...current[role], id],
+        },
+    );
+  return (
+    <details className="health-advanced">
+      <summary>Manage calendar roles</summary>
+      <p>
+        Calendars outside all three roles are excluded. A calendar used only for
+        availability blocks time without importing its events.
+      </p>
+      <button
+        type="button"
+        disabled={calendars.isPending}
+        onClick={() => calendars.mutate(undefined)}
+      >
+        {calendars.isPending
+          ? "Checking calendars�"
+          : "Load accessible calendars"}
+      </button>
+      {feedback && <p role="status">{feedback}</p>}
+      {selection && calendars.data && (
+        <form
+          className="health-stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            calendars.mutate(selection);
+          }}
+        >
+          <label htmlFor={formId + "-outgoing"}>
+            Outgoing lesson events
+            <select
+              id={formId + "-outgoing"}
+              value={selection.outgoing}
+              onChange={(event) => {
+                const outgoing = event.currentTarget.value;
+                setSelection((current) => current && { ...current, outgoing });
+              }}
+            >
+              {!calendars.data.calendars.some(
+                ({ id, write }) => id === selection.outgoing && write,
+              ) && (
+                <option value={selection.outgoing}>
+                  Current destination has no verified write access
+                </option>
+              )}
+              {calendars.data.calendars
+                .filter(({ write }) => write)
+                .map(({ id, label }) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+            </select>
+          </label>
+          {calendars.data.calendars.map(({ id, label, read }, index) => (
+            <fieldset key={id}>
+              <legend>{label}</legend>
+              <label htmlFor={formId + "-available-" + index}>
+                <input
+                  id={formId + "-available-" + index}
+                  type="checkbox"
+                  checked={selection.availability.includes(id)}
+                  onChange={() => toggle("availability", id)}
+                />{" "}
+                Check availability
+              </label>
+              <label htmlFor={formId + "-incoming-" + index}>
+                <input
+                  id={formId + "-incoming-" + index}
+                  type="checkbox"
+                  checked={selection.incoming.includes(id)}
+                  disabled={!read}
+                  onChange={() => toggle("incoming", id)}
+                />{" "}
+                Monitor incoming changes
+              </label>
+              {calendars.data.roles.incoming.includes(id) && (
+                <button
+                  type="button"
+                  disabled={catchUp.isPending}
+                  onClick={() => catchUp.mutate(id)}
+                >
+                  {catchUp.isPending
+                    ? "Checking changes�"
+                    : "Check missed changes"}
+                </button>
+              )}
+            </fieldset>
+          ))}
+          <button
+            type="submit"
+            className="primary"
+            disabled={calendars.isPending || !selection.availability.length}
+          >
+            Save calendar roles
+          </button>
+        </form>
+      )}
+    </details>
+  );
+}
+
 function ConnectionDetail({
   studio,
   isDemo,
@@ -363,6 +508,27 @@ function ConnectionDetail({
   timezone: string;
 }) {
   const { check, result } = useHealthCheck(studio, refetch);
+  const [params] = useSearchParams();
+  const oauth = useMutation({
+    mutationFn: () => beginCalendarAuthorization(studio),
+  });
+  const authMessage = new Map([
+    [
+      "connected",
+      "Google returned to Coach�D. Test the Calendar connection to verify access.",
+    ],
+    [
+      "account",
+      "Choose the existing studio Google account when authorizing Calendar.",
+    ],
+    ["permissions", "Google did not grant the required Calendar permissions."],
+    ["declined", "Google authorization was cancelled."],
+    [
+      "invalid",
+      "The authorization request expired or did not match this browser. Start again.",
+    ],
+    ["unavailable", "Google authorization could not finish. Try again."],
+  ]).get(params.get("calendar_auth") ?? "");
   const checking = check.isPending || health?.checking;
   const observation = observationFor(health, service);
   const issues =
@@ -392,9 +558,24 @@ function ConnectionDetail({
               >
                 {checking ? "Testing�" : "Test Calendar connection"}
               </button>
+              <button
+                type="button"
+                disabled={oauth.isPending}
+                onClick={() => oauth.mutate()}
+              >
+                {oauth.isPending ? "Opening Google�" : "Reauthorize Calendar"}
+              </button>
+              {oauth.isError && (
+                <p role="status">
+                  Calendar authorization could not start. Check the deployment�s
+                  Google OAuth callback configuration.
+                </p>
+              )}
+              {authMessage && <p role="status">{authMessage}</p>}
               {result && <p role="status">{result}</p>}
             </div>
           )}
+          {!isDemo && <CalendarRoleEditor studio={studio} />}
           <a
             className="button-link"
             href="https://calendar.google.com/"

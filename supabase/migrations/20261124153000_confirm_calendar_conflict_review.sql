@@ -1,7 +1,7 @@
 -- Resolve one reviewed mapping without replaying any event write or lesson command.
 create function public.confirm_calendar_conflict_review(
   p_studio uuid, p_actor uuid, p_lesson uuid, p_version integer,
-  p_event_id text, p_starts_at timestamptz, p_ends_at timestamptz,
+  p_event_id text, p_event_revision text, p_starts_at timestamptz, p_ends_at timestamptz,
   p_correlation text
 ) returns text language plpgsql security definer set search_path='' as $$
 declare
@@ -20,7 +20,7 @@ begin
     where id=p_lesson and studio_id=p_studio for update;
   if not found or lesson.version is distinct from p_version then return 'changed'; end if;
   select * into projection from public.calendar_projections where lesson_id=p_lesson for update;
-  if not found or p_event_id is null or projection.external_event_id is distinct from p_event_id
+  if not found or p_event_id is null or nullif(p_event_revision,'') is null or projection.external_event_id is distinct from p_event_id
     then return 'changed'; end if;
   if projection.status='reviewed' then return 'already_reviewed'; end if;
   if projection.status not in ('failed','review_required')
@@ -41,7 +41,7 @@ begin
 
   update public.sync_conflicts set status='accepted_internal',resolved_at=now()
     where studio_id=p_studio and entity_type='lesson' and entity_id=p_lesson and status='open';
-  update public.calendar_projections set status='reviewed',last_error=null,next_attempt_at=null,
+  update public.calendar_projections set status='reviewed',external_version=p_event_revision,last_error=null,next_attempt_at=null,
     claim_token=null,claim_until=null where id=projection.id;
   insert into public.audit_events(studio_id,actor_id,action,entity_type,entity_id,source,
     reason,correlation_id,after_state)
@@ -50,7 +50,7 @@ begin
       p_correlation,jsonb_build_object('conflictsReviewed',total,'lessonVersion',p_version));
   return 'reviewed';
 end $$;
-revoke all on function public.confirm_calendar_conflict_review(uuid,uuid,uuid,integer,text,timestamptz,timestamptz,text)
+revoke all on function public.confirm_calendar_conflict_review(uuid,uuid,uuid,integer,text,text,timestamptz,timestamptz,text)
   from public,anon,authenticated;
-grant execute on function public.confirm_calendar_conflict_review(uuid,uuid,uuid,integer,text,timestamptz,timestamptz,text)
+grant execute on function public.confirm_calendar_conflict_review(uuid,uuid,uuid,integer,text,text,timestamptz,timestamptz,text)
   to service_role;

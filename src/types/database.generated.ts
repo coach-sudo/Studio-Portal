@@ -4819,10 +4819,29 @@ export type Database = {
         Args: { p_invoice: string; p_key: string; p_session: string }
         Returns: undefined
       }
+      begin_calendar_oauth: {
+        Args: {
+          p_actor: string
+          p_browser: string
+          p_state: string
+          p_studio: string
+          p_verifier: string
+        }
+        Returns: undefined
+      }
       calendar_claim_current: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
       }
+      calendar_inbound_checkpoint: {
+        Args: { p_calendar: string; p_studio: string }
+        Returns: Json
+      }
+      calendar_oauth_refresh: {
+        Args: { p_email: string; p_studio: string }
+        Returns: string
+      }
+      calendar_roles: { Args: { p_studio: string }; Returns: Json }
       campaign_delivery_stats: {
         Args: { p_studio_id: string }
         Returns: {
@@ -5334,6 +5353,19 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      commit_calendar_inbound_page: {
+        Args: {
+          p_calendar: string
+          p_canonical?: boolean
+          p_events: Json
+          p_next_page: string
+          p_next_sync: string
+          p_reset: boolean
+          p_revision: number
+          p_studio: string
+        }
+        Returns: Json
+      }
       communication_activity: {
         Args: {
           p_attention?: boolean
@@ -5358,12 +5390,17 @@ export type Database = {
           p_correlation: string
           p_ends_at: string
           p_event_id: string
+          p_event_revision: string
           p_lesson: string
           p_starts_at: string
           p_studio: string
           p_version: number
         }
         Returns: string
+      }
+      consume_calendar_oauth: {
+        Args: { p_browser: string; p_state: string }
+        Returns: Json
       }
       correct_lesson_datetime: {
         Args: { p_key: string; p_value: Json }
@@ -5607,6 +5644,10 @@ export type Database = {
         Args: { keep_student_id: string; remove_student_id: string }
         Returns: Json
       }
+      observe_existing_calendar_conflict: {
+        Args: { p_event: Json; p_lesson: string; p_studio: string }
+        Returns: boolean
+      }
       package_credit_balance: {
         Args: { target_package: string }
         Returns: number
@@ -5791,6 +5832,26 @@ export type Database = {
       retry_lesson_bulk: {
         Args: { p_actor: string; p_job: string; p_key: string; p_token: string }
         Returns: Json
+      }
+      save_calendar_oauth: {
+        Args: {
+          p_actor: string
+          p_email: string
+          p_refresh: string
+          p_studio: string
+        }
+        Returns: undefined
+      }
+      save_calendar_roles: {
+        Args: {
+          p_actor: string
+          p_availability: string[]
+          p_default: string
+          p_incoming: string[]
+          p_outgoing: string
+          p_studio: string
+        }
+        Returns: boolean
       }
       save_material_study: {
         Args: {

@@ -1,9 +1,12 @@
+import { activeCalendarRoles } from "./calendar-roles";
 import {
   assertWorkerEnabled,
   workerEnabled,
   disabledWorkerResult,
   WorkerDisabledError,
 } from "./worker-controls";
+import { calendarOAuthConfig } from "./calendar-oauth";
+import { syncInboundCalendar } from "./calendar-inbound";
 import { checkedAll, checkedQuery } from "./checked-query";
 import { z } from "zod";
 import { googleAccessToken } from "./google";
@@ -460,18 +463,34 @@ async function reconcileManagedCalendarEvent(
         .eq("lesson_id", lesson.id);
     return false;
   }
-  const correlation = `calendar-${change}:${event.id}:${event.updated || event.etag || "unknown"}`,
-    { error: changeError } = await checkedQuery(
-      db.rpc("command_change_lesson_state", {
-        p_lesson_id: lesson.id,
-        p_expected_version: lesson.version,
-        p_action: change === "cancellation" ? "cancel" : "reschedule",
-        p_starts_at: change === "reschedule" ? event.start?.dateTime : null,
-        p_ends_at: change === "reschedule" ? event.end?.dateTime : null,
-        // Google is the source of this mutation. Re-projecting it would create a loop.
-        p_queue_calendar: false,
-      }),
-    );
+  const previousConflict = await checkedQuery<{
+    data: boolean | null;
+    error: unknown;
+  }>(
+    db.rpc("observe_existing_calendar_conflict", {
+      p_studio: studio.id,
+      p_lesson: lesson.id,
+      p_event: event,
+    }),
+  );
+  if (previousConflict.data === true) return false;
+  const correlation = `calendar-${change}:${event.id}:${event.updated || event.etag || "unknown"}`;
+  const { error: changeError } = await db.rpc("command_change_lesson_state", {
+    p_lesson_id: lesson.id,
+    p_expected_version: lesson.version,
+    p_action: change === "cancellation" ? "cancel" : "reschedule",
+    p_starts_at: change === "reschedule" ? event.start?.dateTime : null,
+    p_ends_at: change === "reschedule" ? event.end?.dateTime : null,
+    // Google is the source of this mutation. Re-projecting it would create a loop.
+    p_queue_calendar: false,
+  });
+  if (
+    changeError &&
+    !/^(REVIEW_REQUIRED:|VERSION_CONFLICT$|IDEMPOTENCY_CONFLICT$)/.test(
+      changeError.message,
+    )
+  )
+    throw changeError;
   if (changeError) {
     await checkedAll([
       checkedQuery(
@@ -1407,12 +1426,24 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
   assertWorkerEnabled("provider-intake");
   telemetry?.stage("google_token");
   const token = await googleAccessToken();
+  let gmailToken: Promise<string> | undefined;
   let calendarImported = 0,
     calendarReview = 0,
     gmailImported = 0,
     gmailReview = 0,
     gmailScope = true,
     failures = 0;
+  const incremental =
+    Netlify.env.get("GOOGLE_CALENDAR_INBOUND_ENABLED") === "true";
+  const calendarStudio =
+    Netlify.env.get("GOOGLE_CALENDAR_STUDIO_ID") ||
+    (studios?.length === 1 ? studios[0].id : undefined);
+  if (incremental && !studios?.some((studio) => studio.id === calendarStudio)) {
+    telemetry?.failure(
+      new Error("Calendar intake requires one configured studio"),
+    );
+    failures++;
+  }
   for (const studio of studios || []) {
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("student_identities");
@@ -1428,9 +1459,26 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     }
     telemetry?.stage("calendar_processing");
     try {
-      const calendar = await importCalendar(token, studio, students || []);
-      calendarImported += calendar.imported;
-      calendarReview += calendar.review;
+      if (incremental && studio.id === calendarStudio) {
+        const { incoming, outgoing } = await activeCalendarRoles();
+        for (const id of incoming) {
+          assertWorkerEnabled("provider-intake");
+          const result = await syncInboundCalendar(
+            db,
+            studio.id,
+            id,
+            token,
+            4,
+            id === outgoing,
+          );
+          calendarImported += result.imported;
+          calendarReview += result.review;
+        }
+      } else if (!incremental && !calendarOAuthConfig()) {
+        const result = await importCalendar(token, studio, students || []);
+        calendarImported += result.imported;
+        calendarReview += result.review;
+      }
     } catch (error) {
       telemetry?.failure(error);
       failures++;
@@ -1438,7 +1486,13 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("gmail_processing");
     try {
-      const gmail = await scanGmail(token, studio, students || []);
+      if (calendarOAuthConfig())
+        gmailToken ??= googleAccessToken(undefined, "gmail");
+      const gmail = await scanGmail(
+        gmailToken ? await gmailToken : token,
+        studio,
+        students || [],
+      );
       gmailImported += gmail.imported;
       gmailReview += gmail.review;
       gmailScope = gmailScope && gmail.scope;

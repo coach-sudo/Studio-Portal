@@ -1,3 +1,9 @@
+import { syncInboundCalendar } from "./_shared/calendar-inbound";
+import {
+  activeCalendarRoles,
+  manageCalendarRoles,
+} from "./_shared/calendar-roles";
+import { googleAccessToken } from "./_shared/google";
 import type { Config, Context } from "@netlify/functions";
 import { z } from "zod";
 import type { RepairResult } from "../../src/domain/systemHealth";
@@ -5,6 +11,11 @@ import {
   calendarReviewRequest,
   reviewCalendarConflict,
 } from "./_shared/calendar-conflict-review";
+import {
+  beginCalendarOAuth,
+  calendarOAuthConfig,
+  calendarOAuthStudio,
+} from "./_shared/calendar-oauth";
 import { apiError, AppError, json } from "./_shared/http";
 import {
   googleConfigured,
@@ -50,7 +61,10 @@ export default async function studioSystemHealth(
       action !== "status" &&
       action !== "check" &&
       action !== "retry" &&
-      action !== "calendar-review"
+      action !== "calendar-review" &&
+      action !== "calendar-oauth" &&
+      action !== "calendar-roles" &&
+      action !== "calendar-catch-up"
     )
       throw new AppError("NOT_FOUND", {
         status: 404,
@@ -92,6 +106,64 @@ export default async function studioSystemHealth(
     }
     if (action === "check")
       return json(await runStudioHealth(db, studio.data, false));
+
+    if (action === "calendar-catch-up") {
+      if (studio.data !== (await calendarOAuthStudio(db)))
+        throw AppError.forbidden();
+      if (
+        !workerEnabled("provider-intake") ||
+        Netlify.env.get("GOOGLE_CALENDAR_INBOUND_ENABLED") !== "true"
+      )
+        return json({ state: "held" });
+      const { incoming, outgoing } = await activeCalendarRoles();
+      const payload = z
+        .object({ calendar: z.string().min(1).max(1024) })
+        .strict()
+        .safeParse(await request.json().catch(() => null));
+      const selected = payload.success && payload.data.calendar;
+      const actual =
+        selected && incoming.includes(selected)
+          ? selected
+          : selected &&
+              incoming.includes("primary") &&
+              selected === calendarOAuthConfig()?.account
+            ? "primary"
+            : null;
+      if (!actual)
+        throw new AppError("VALIDATION_FAILED", {
+          status: 400,
+          message: "Choose a calendar assigned to incoming changes.",
+        });
+      const token = await googleAccessToken(AbortSignal.timeout(5000));
+      const result = await syncInboundCalendar(
+        db,
+        studio.data,
+        actual,
+        token,
+        1,
+        actual === outgoing,
+      );
+      return json({ state: "checked", ...result });
+    }
+
+    if (action === "calendar-roles")
+      return json(
+        await manageCalendarRoles(
+          request,
+          db,
+          studio.data,
+          actor.data.user.id,
+          googleAccessToken,
+        ),
+      );
+
+    if (action === "calendar-oauth")
+      return await beginCalendarOAuth(
+        request,
+        db,
+        studio.data,
+        actor.data.user.id,
+      );
 
     if (action === "calendar-review") {
       const payload = calendarReviewRequest.safeParse(

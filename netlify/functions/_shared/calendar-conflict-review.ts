@@ -1,3 +1,4 @@
+import { activeCalendarRoles } from "./calendar-roles";
 import { z } from "zod";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "../../../src/types/database.generated";
@@ -82,7 +83,7 @@ export async function reviewCalendarConflict(
   let response: Response;
   try {
     const token = await googleAccessToken(signal);
-    const calendar = encodeURIComponent(get("GOOGLE_CALENDAR_ID") || "primary");
+    const calendar = encodeURIComponent((await activeCalendarRoles()).outgoing);
     const eventId = encodeURIComponent(projection.external_event_id);
     response = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${calendar}/events/${eventId}?fields=id,etag,status,htmlLink,start,end,recurrence,recurringEventId`,
@@ -148,6 +149,7 @@ export async function reviewCalendarConflict(
       p_lesson: lesson.id,
       p_version: lesson.version,
       p_event_id: event.data.id,
+      p_event_revision: event.data.etag,
       p_starts_at: event.data.start.dateTime,
       p_ends_at: event.data.end.dateTime,
       p_correlation: correlation,

@@ -48,7 +48,7 @@ afterAll(() => db.close());
 
 async function review(actor = coach, version = 2, start = startsAt) {
   const result = await db.query<{ result: string }>(
-    "select public.confirm_calendar_conflict_review($1,$2,$3,$4,'fixture-event',$5,$6,'fixture-review') result",
+    "select public.confirm_calendar_conflict_review($1,$2,$3,$4,'fixture-event','verified-revision',$5,$6,'fixture-review') result",
     [studio, actor, lesson, version, start, endsAt],
   );
   return result.rows[0].result;
@@ -69,6 +69,32 @@ it("rejects unrelated actors and stale timing, then resolves duplicates with one
     [lesson],
   );
 
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261124161000_consolidate_calendar_conflict_observations.sql",
+      "utf8",
+    ),
+  );
+  const observe = (event: object) =>
+    db.query(
+      "insert into public.sync_conflicts(studio_id,entity_type,entity_id,source,internal_version,external_payload) values ($1,'lesson',$2,'google_calendar',2,$3) returning id",
+      [studio, lesson, event],
+    );
+  expect(
+    (await observe({ id: "fixture-event", etag: "new-revision" })).rows,
+  ).toHaveLength(0);
+  expect(
+    (await db.query("select id from public.sync_conflicts where status='open'"))
+      .rows,
+  ).toHaveLength(1);
+  expect(
+    (
+      await db.query(
+        "select id from public.sync_conflicts where status='merged'",
+      )
+    ).rows,
+  ).toHaveLength(2);
+
   const before = await db.query("select * from public.lessons where id=$1", [
     lesson,
   ]);
@@ -78,7 +104,11 @@ it("rejects unrelated actors and stale timing, then resolves duplicates with one
     await db.query("select * from public.lessons where id=$1", [lesson]),
   ).toEqual(before);
   expect(
-    (await db.query("select distinct status from public.sync_conflicts")).rows,
+    (
+      await db.query(
+        "select distinct status from public.sync_conflicts where status<>'merged'",
+      )
+    ).rows,
   ).toEqual([{ status: "accepted_internal" }]);
   expect(
     (
@@ -90,11 +120,44 @@ it("rejects unrelated actors and stale timing, then resolves duplicates with one
     {
       status: "reviewed",
       external_event_id: "fixture-event",
-      external_version: "original",
+      external_version: "verified-revision",
       next_attempt_at: null,
     },
   ]);
   expect(
     (await db.query("select action from public.audit_events")).rows,
   ).toEqual([{ action: "system_health.review_calendar_conflict" }]);
+  const replay = await db.query(
+    "select public.observe_existing_calendar_conflict($1,$2,$3) as known",
+    [studio, lesson, { id: "fixture-event", etag: "later-metadata-revision" }],
+  );
+  expect(replay.rows).toEqual([{ known: true }]);
+  expect((await observe({ id: "fixture-event" })).rows).toHaveLength(0);
+  expect(
+    (
+      await observe({
+        id: "fixture-event",
+        start: { dateTime: "2040-01-01T12:00:00Z" },
+        end: { dateTime: "2040-01-01T13:00:00Z" },
+      })
+    ).rows,
+  ).toHaveLength(1);
+  expect(
+    (
+      await observe({
+        id: "fixture-event",
+        startsAt: "2040-01-01T07:00:00-05:00",
+        endsAt: "2040-01-01T08:00:00-05:00",
+      })
+    ).rows,
+  ).toHaveLength(0);
+  expect(
+    (
+      await db.query(
+        "select status,last_error from public.calendar_projections",
+      )
+    ).rows,
+  ).toEqual([
+    { status: "failed", last_error: "synchronization_review_required" },
+  ]);
 });

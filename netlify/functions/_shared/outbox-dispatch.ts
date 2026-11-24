@@ -110,7 +110,7 @@ export async function dispatchOutbox(
         continue;
       }
       assertWorkerEnabled("automations");
-      token ??= await googleAccessToken();
+      token ??= await googleAccessToken(undefined, "gmail");
       // An authoritative trigger may have cancelled this item while provider auth was in flight.
       const current = await db
         .from("outbox_messages")

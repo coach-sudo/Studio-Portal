@@ -1,3 +1,4 @@
+import { calendarOAuthConfig } from "../_shared/calendar-oauth";
 import { handleLessonPaymentCommands } from "./lesson-payments";
 import { queueLessonChangeEmails } from "../_shared/booking-email";
 import { googleAccessToken, googleFreeBusy } from "../_shared/google";
@@ -76,9 +77,10 @@ export async function handleLessonsCommands(
         p_value: value,
       });
       if (preview.error) throw preview.error;
-      const token = Netlify.env.get("GOOGLE_REFRESH_TOKEN")
-        ? await googleAccessToken()
-        : null;
+      const token =
+        Netlify.env.get("GOOGLE_REFRESH_TOKEN") || calendarOAuthConfig()
+          ? await googleAccessToken()
+          : null;
       for (const item of preview.data.items)
         if (
           token &&
@@ -153,7 +155,7 @@ export async function handleLessonsCommands(
         queuedSideEffects: ["calendar_projection"],
       });
     }
-    if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
+    if (Netlify.env.get("GOOGLE_REFRESH_TOKEN") || calendarOAuthConfig()) {
       const token = await googleAccessToken();
       const tz = String(input.payload.timezone || "America/New_York");
       const starts =
