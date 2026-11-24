@@ -1226,6 +1226,7 @@ async function setup(
   if (paymentError) throwFixtureError("payment", paymentError);
 
   const actorContent = {
+    displayName: "E2E Actor",
     headline: "E2E Actor",
     bio: "Published deterministic actor profile.",
     location: "New York, NY",
