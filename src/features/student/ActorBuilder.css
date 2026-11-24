@@ -74,13 +74,13 @@
     max-width: 100%;
   }
   .actor-builder-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .actor-builder-mobile-tabs {
     display: flex;
     gap: 8px;
     position: sticky;
-    top: -20px;
+    top: 0;
     padding: 10px 0;
     background: var(--app-surface);
     z-index: 4;
@@ -102,5 +102,13 @@
   .actor-builder-preview {
     position: static;
     max-height: none;
+    overflow: visible;
+    padding: 0;
+  }
+  .actor-builder-preview > .actor-builder-viewport-controls {
+    display: none;
+  }
+  .actor-builder-viewport.mobile {
+    max-width: none;
   }
 }
