@@ -40,6 +40,7 @@ import { StudentFinancialSummary } from "../../components/StudentFinancialSummar
 import { HouseholdInvoiceSummary } from "./HouseholdInvoiceSummary";
 import { LessonCreditWallet } from "./LessonCreditWallet";
 import type { PortalContext } from "../../data/portalContext";
+import "./StudentPortalPayments.css";
 
 export function Payments({
   data,
@@ -558,7 +559,7 @@ export function Payments({
         <div id="lesson-packages" tabIndex={-1}>
           <Section title="Available packages">
             {purchasableDefinitions.length > 1 && (
-              <div className="list-controls package-purchase-controls">
+              <div className="package-purchase-controls">
                 <label>
                   Lesson length
                   <select
@@ -627,104 +628,110 @@ export function Payments({
       {purchaseDefinition && canManagePackagePayment && (
         <Dialog
           title={learnerPackageText(purchaseDefinition.name)}
+          className="package-purchase-dialog"
           onClose={() => {
             if (!checkoutBusy) setPurchaseDefinition(undefined);
           }}
         >
-          <div className="package-purchase-summary">
-            <strong>
-              {formatMoney(
-                purchaseDefinition.priceMinor,
-                purchaseDefinition.currency,
-              )}
-            </strong>
-            <span>{purchaseDefinition.sessionCount} lessons included</span>
+          <div className="workflow-content package-purchase-content">
+            <div className="package-purchase-summary">
+              <strong>
+                {formatMoney(
+                  purchaseDefinition.priceMinor,
+                  purchaseDefinition.currency,
+                )}
+              </strong>
+              <span>{purchaseDefinition.sessionCount} lessons included</span>
+            </div>
+            <label>
+              Purchase option
+              <select
+                value={renewalMode}
+                disabled={checkoutBusy}
+                onChange={(event) => setRenewalMode(event.target.value)}
+              >
+                {recurringOnly && (
+                  <option value="">Choose a renewal schedule</option>
+                )}
+                {data.packageBillingOptions
+                  .filter(
+                    (option) =>
+                      option.definitionId === purchaseDefinition.id &&
+                      option.active &&
+                      (!recurringOnly || isCalendarRenewal(option)),
+                  )
+                  .map((option) => (
+                    <option key={option.id} value={option.renewalMode}>
+                      {option.renewalMode === "one_time"
+                        ? "One-time purchase"
+                        : option.renewalMode === "biweekly"
+                          ? "Renew every two weeks"
+                          : option.renewalMode === "balance_threshold"
+                            ? `Renew when ${option.balanceThreshold ?? 1} ${(option.balanceThreshold ?? 1) === 1 ? "lesson remains" : "lessons remain"}`
+                            : `Renew ${option.renewalMode}`}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <p>
+              Includes {purchaseDefinition.sessionCount} lessons of{" "}
+              {purchaseDefinition.sessionDurationMinutes} minutes each.
+            </p>
+            {["weekly", "biweekly", "monthly"].includes(renewalMode) && (
+              <p className="portal-notice">
+                The first payment is due at checkout. You’ll pay{" "}
+                {formatMoney(
+                  purchaseDefinition.priceMinor,
+                  purchaseDefinition.currency,
+                )}{" "}
+                {renewalMode === "biweekly" ? "every two weeks" : renewalMode}{" "}
+                until you turn off renewal in Payments.
+                {purchaseDefinition.expirationDays
+                  ? ` Each package can be used for ${purchaseDefinition.expirationDays} days.`
+                  : ""}
+              </p>
+            )}
+            {paying && (
+              <p>After checkout, check whether this lesson is marked Paid.</p>
+            )}
+            {renewalMode === "balance_threshold" && (
+              <p className="portal-notice">
+                By continuing, you authorize Coach’D to charge the saved payment
+                method when the package reaches the selected number of lessons
+                remaining. You can turn this off later.
+              </p>
+            )}
+            {notice && (
+              <p className="portal-notice" role="status">
+                {notice}
+              </p>
+            )}
+            <div className="form-actions">
+              <button
+                disabled={checkoutBusy}
+                onClick={() => setPurchaseDefinition(undefined)}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary"
+                disabled={checkoutBusy || !renewalMode}
+                onClick={() => void purchase(purchaseDefinition.id)}
+              >
+                {checkoutBusy
+                  ? "Opening checkout…"
+                  : "Continue to secure checkout"}
+              </button>
+            </div>
+            {purchaseDefinition.giftable && (
+              <Link
+                className="button-link"
+                to={`/gift/${purchaseDefinition.id}`}
+              >
+                Gift at studio pricing
+              </Link>
+            )}
           </div>
-          <label>
-            Purchase option
-            <select
-              value={renewalMode}
-              disabled={checkoutBusy}
-              onChange={(event) => setRenewalMode(event.target.value)}
-            >
-              {recurringOnly && (
-                <option value="">Choose a renewal schedule</option>
-              )}
-              {data.packageBillingOptions
-                .filter(
-                  (option) =>
-                    option.definitionId === purchaseDefinition.id &&
-                    option.active &&
-                    (!recurringOnly || isCalendarRenewal(option)),
-                )
-                .map((option) => (
-                  <option key={option.id} value={option.renewalMode}>
-                    {option.renewalMode === "one_time"
-                      ? "One-time purchase"
-                      : option.renewalMode === "biweekly"
-                        ? "Renew every two weeks"
-                        : option.renewalMode === "balance_threshold"
-                          ? `Renew when ${option.balanceThreshold ?? 1} ${(option.balanceThreshold ?? 1) === 1 ? "lesson remains" : "lessons remain"}`
-                          : `Renew ${option.renewalMode}`}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <p>
-            Includes {purchaseDefinition.sessionCount} lessons of{" "}
-            {purchaseDefinition.sessionDurationMinutes} minutes each.
-          </p>
-          {["weekly", "biweekly", "monthly"].includes(renewalMode) && (
-            <p className="portal-notice">
-              The first payment is due at checkout. You’ll pay{" "}
-              {formatMoney(
-                purchaseDefinition.priceMinor,
-                purchaseDefinition.currency,
-              )}{" "}
-              {renewalMode === "biweekly" ? "every two weeks" : renewalMode}{" "}
-              until you turn off renewal in Payments.
-              {purchaseDefinition.expirationDays
-                ? ` Each package can be used for ${purchaseDefinition.expirationDays} days.`
-                : ""}
-            </p>
-          )}
-          {paying && (
-            <p>After checkout, check whether this lesson is marked Paid.</p>
-          )}
-          {renewalMode === "balance_threshold" && (
-            <p className="portal-notice">
-              By continuing, you authorize Coach’D to charge the saved payment
-              method when the package reaches the selected number of lessons
-              remaining. You can turn this off later.
-            </p>
-          )}
-          {notice && (
-            <p className="portal-notice" role="status">
-              {notice}
-            </p>
-          )}
-          <div className="form-actions">
-            <button
-              disabled={checkoutBusy}
-              onClick={() => setPurchaseDefinition(undefined)}
-            >
-              Cancel
-            </button>
-            <button
-              className="primary"
-              disabled={checkoutBusy || !renewalMode}
-              onClick={() => void purchase(purchaseDefinition.id)}
-            >
-              {checkoutBusy
-                ? "Opening checkout…"
-                : "Continue to secure checkout"}
-            </button>
-          </div>
-          {purchaseDefinition.giftable && (
-            <Link className="button-link" to={`/gift/${purchaseDefinition.id}`}>
-              Gift at studio pricing
-            </Link>
-          )}
         </Dialog>
       )}
     </div>
