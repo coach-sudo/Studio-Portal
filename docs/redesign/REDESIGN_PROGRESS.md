@@ -1,0 +1,10 @@
+# Redesign progress
+
+| Work                                       | Status and dependency                                                                                                                                                                                               |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A1 · Lesson History                        | Draft review. Production health and GitHub main matched `8dd3be699fcd` at kickoff. The patch is limited to the history row. See [visual acceptance](VISUAL_ACCEPTANCE.md) for evidence, verification, and rollback. |
+| A2 · Package filters                       | Next mobile candidate after A1 review. The confirmed failure is in the package filter layout. Requires its own implementation authorization.                                                                        |
+| A3 · Actor preview                         | Scope the phone preview after A1. Verify the frame and portrait with synthetic media.                                                                                                                               |
+| Actor API privacy                          | Separate read-only investigation. Its remediation can be reviewed independently of A2. Coordinate any Actor preview or Builder work that changes the public renderer or response contract.                          |
+| Shared foundations                         | Reuse existing tokens, controls, and overlay primitives. Pilot writing, attachments, and recovery in existing workflows before role and workspace rollout.                                                          |
+| Roles, connected workspaces, notifications | Follow approval of shared foundations. Use the audit route inventory and preserve delivery controls.                                                                                                                |
