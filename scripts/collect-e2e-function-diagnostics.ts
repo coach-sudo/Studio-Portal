@@ -5,7 +5,14 @@ import path from "node:path";
 const source = await readFile(
   path.join(process.env.RUNNER_TEMP!, "netlify-serve.log"),
   "utf8",
-);
+).catch((error: unknown) => {
+  if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
+    throw error;
+  console.log(
+    "Function diagnostics unavailable because Netlify did not write a serve log.",
+  );
+  process.exit(0);
+});
 const evidence = {
   databaseCodes: [...source.matchAll(/code:\s*['"]([A-Z0-9_]{5,40})['"]/g)].map(
     (match) => match[1],
