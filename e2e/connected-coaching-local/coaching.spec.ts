@@ -331,11 +331,17 @@ test("next lesson updates payment links and closes the previous lesson actions",
   ).toHaveCount(0);
   await payment.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("link", { name: "Next lesson", exact: true }).click();
+  await expect(page).toHaveURL(/\/lessons\/wave4-next$/);
+  await expect(
+    page.getByRole("heading", { name: "Next coaching lesson", exact: true }),
+  ).toBeVisible();
   await expect(payment).toBeHidden();
-  await page
-    .getByText("Payment, credits & lesson administration", { exact: true })
-    .click();
-  await page
+
+  const administration = page.locator("details.lesson-admin-disclosure");
+  await expect(administration).toHaveJSProperty("open", false);
+  await administration.locator("summary").click();
+  await expect(administration).toHaveJSProperty("open", true);
+  await administration
     .getByRole("button", { name: "Credits & payment", exact: true })
     .click();
   await expect(
