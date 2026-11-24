@@ -100,9 +100,7 @@
   background: var(--app-surface-soft);
   border-color: var(--app-border);
 }
-:root[data-portal-theme="dark"] .settings-section-index a {
-  color: var(--ink);
-}
+:root[data-portal-theme="dark"] .settings-section-index a,
 :root[data-portal-theme="dark"] .data-summary strong {
   color: var(--ink);
 }

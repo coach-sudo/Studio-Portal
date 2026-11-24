@@ -5,32 +5,9 @@ import {
   useId,
   useRef,
   useState,
-  type ButtonHTMLAttributes,
   type ReactNode,
 } from "react";
-import { ChevronRight, CircleCheck, TriangleAlert } from "lucide-react";
-import type { StudioMutationStatus } from "../hooks/useStudioMutation";
-
-export function PageActions({ children }: { children: ReactNode }) {
-  return <div className="page-actions">{children}</div>;
-}
-
-export function DisclosureSection({
-  title,
-  children,
-  open = false,
-}: {
-  title: string;
-  children: ReactNode;
-  open?: boolean;
-}) {
-  return (
-    <details className="disclosure-section" open={open}>
-      <summary>{title}</summary>
-      <div>{children}</div>
-    </details>
-  );
-}
+import { CircleCheck, TriangleAlert } from "lucide-react";
 
 export function InlineNotice({
   children,
@@ -47,23 +24,6 @@ export function InlineNotice({
       {tone === "danger" ? <TriangleAlert /> : <CircleCheck />}
       <span>{children}</span>
     </p>
-  );
-}
-
-export function MutationButton({
-  status,
-  idleLabel,
-  savingLabel = "Saving…",
-  ...props
-}: {
-  status: StudioMutationStatus;
-  idleLabel: string;
-  savingLabel?: string;
-} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
-  return (
-    <button {...props} disabled={props.disabled || status === "saving"}>
-      {status === "saving" ? savingLabel : idleLabel}
-    </button>
   );
 }
 
@@ -105,35 +65,6 @@ export function Section({
       </header>
       {children}
     </section>
-  );
-}
-export function ActionRow({
-  initials,
-  title,
-  detail,
-  actionLabel = "Open",
-  urgent,
-  onClick,
-}: {
-  initials: string;
-  title: string;
-  detail: string;
-  actionLabel?: string;
-  urgent?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <div className={`action-row ${urgent ? "urgent" : ""}`}>
-      <span className="avatar">{initials}</span>
-      <div>
-        <strong>{title}</strong>
-        <small>{detail}</small>
-      </div>
-      <button type="button" onClick={onClick}>
-        {actionLabel}
-        <ChevronRight />
-      </button>
-    </div>
   );
 }
 export function EmptyState({
@@ -280,47 +211,6 @@ export function ListControls({
     </div>
   );
 }
-export function ExplanationDialog({
-  title,
-  explanation,
-  evidence,
-  action,
-  onClose,
-  onAction,
-}: {
-  title: string;
-  explanation: string;
-  evidence: string[];
-  action: string;
-  onClose: () => void;
-  onAction?: () => void;
-}) {
-  return (
-    <Dialog title={title} description={explanation} onClose={onClose}>
-      <div className="workflow-content">
-        <h3>Why this is here</h3>
-        <ul>
-          {evidence.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-        <div className="form-actions">
-          <button onClick={onClose}>Not now</button>
-          <button
-            className="primary"
-            onClick={() => {
-              onAction?.();
-              onClose();
-            }}
-          >
-            {action.replaceAll("_", " ")}
-          </button>
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
 const overlayStack: Array<{ token: symbol; element: HTMLElement | null }> = [];
 let originalOverflow = "";
 

@@ -1,5 +1,7 @@
 # Coach’D Studio Portal Modernization — Master Engineering Plan
 
+> Historical implementation plan. Start with the [developer README](../README.md) for current entry points and release procedures.
+
 **Baseline verified October 14, 2026.**
 
 **Document destination:** `C:\Users\dariu\Desktop\studio-portal\docs\studio-portal-modernization-master-plan.md`
@@ -629,7 +631,7 @@ All existing-file links reference the inspected workspace. New files are propose
 | [stripe-webhook-v2.ts](C:/Users/dariu/Desktop/studio-portal/netlify/functions/stripe-webhook-v2.ts)      | Preserve receipt/fulfillment idempotency; atomically record coverage retry intent                  |
 | [package-gifts.ts](C:/Users/dariu/Desktop/studio-portal/netlify/functions/package-gifts.ts)              | Consistent post-claim coverage results and recovery intent                                         |
 | [studentFinancialSummary.ts](C:/Users/dariu/Desktop/studio-portal/src/domain/studentFinancialSummary.ts) | Shared, currency-aware summary contract; avoid invoice/booking double counting                     |
-| [CoachHome.tsx](C:/Users/dariu/Desktop/studio-portal/src/features/coach/CoachHome.tsx)                   | Correct dollar-credit metric; transfer retained content into Today                                 |
+| [CoachHome.tsx](https://github.com/coach-sudo/Studio-Portal/blob/51991932d6c2686e349b1e57e411faff4d8626fc/src/features/coach/CoachHome.tsx)                   | Correct dollar-credit metric; transfer retained content into Today                                 |
 | [InvoiceWorkspace.tsx](C:/Users/dariu/Desktop/studio-portal/src/features/finance/InvoiceWorkspace.tsx)   | Secondary placement, exact invoice context, checkout exception presentation                        |
 
 **New:** `src/data/creditCoverage.ts`, shared coverage types, additive credit diagnostics/command/queue migrations.
