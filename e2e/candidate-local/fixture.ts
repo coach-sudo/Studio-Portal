@@ -131,6 +131,7 @@ export async function installFixture(
     summaryFailure: false,
     empty: false,
     revoked: false,
+    canViewFinance: true,
     summaryDelay: 0,
     allowLocalMutation: false,
     staleReview: false,
@@ -255,7 +256,8 @@ export async function installFixture(
           settings: {},
         },
       ];
-    if (table === "linked_contacts") return [contact];
+    if (table === "linked_contacts")
+      return [{ ...contact, can_view_finance: state.canViewFinance }];
     if (table === "portal_accounts")
       return [{ user_id: identity, account_type: role }];
     if (table === "lesson_list_rows")
@@ -373,7 +375,7 @@ export async function installFixture(
           isMinor: false,
           canViewSchedule: true,
           canViewWork: true,
-          canViewFinance: true,
+          canViewFinance: state.canViewFinance,
           canManageProfile: true,
           canManageLessons: true,
         };

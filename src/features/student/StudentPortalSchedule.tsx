@@ -661,7 +661,7 @@ export function StudentBookings({
                     · {lesson.locationLabel}
                   </small>
                 </div>
-                <span className="form-actions">
+                <span className="lesson-history-statuses">
                   <Status
                     tone={lesson.status === "completed" ? "good" : "neutral"}
                   >
