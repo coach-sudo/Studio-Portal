@@ -104,6 +104,8 @@ vi.mock("../../netlify/functions/_shared/supabase", () => ({
     },
     rpc: async (name: string, args: any) => {
       f.calls.push({ name, args });
+      if (name === "observe_existing_calendar_conflict")
+        return { data: false, error: null };
       if (name === "reserve_student_upcoming_credits") {
         for (const l of f.tables.lessons.filter(
           (l) => l.student_id === args.p_student && l.status === "scheduled",
@@ -297,6 +299,14 @@ it("preserves managed Calendar rescheduling through the existing versioned occur
   await importCalendar("fixture", studio, [student]);
   await importCalendar("fixture", studio, [student]);
   expect(f.calls).toEqual([
+    {
+      name: "observe_existing_calendar_conflict",
+      args: {
+        p_event: f.events[0],
+        p_lesson: "approved-lesson",
+        p_studio: studio.id,
+      },
+    },
     {
       name: "command_change_lesson_state",
       args: expect.objectContaining({
