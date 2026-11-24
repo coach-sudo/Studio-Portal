@@ -165,7 +165,7 @@ export const issueContent = {
   email_ambiguous: issue(
     "Gmail acceptance could not be confirmed",
     "Gmail may already have accepted the message. Automatic resubmission of this record is held.",
-    "Check Sent mail or provider delivery logs using the diagnostic reference before deciding whether a new communication is appropriate.",
+    "In the studio Gmail account, check Sent for the original recipient, subject and time. If Gmail accepted it, leave the delivery held. If the original was never sent and a message is still needed, use the authorized communication workflow on the related record.",
   ),
   email_failed: issue(
     "Email processing needs attention",
@@ -180,7 +180,7 @@ export const issueContent = {
   stripe_processing: issue(
     "Stripe processing needs review",
     "A linked payment event did not finish processing. The associated payment or invoice may need reconciliation.",
-    "Open the related record and compare its status with Stripe. Share diagnostics with the deployment operator if they disagree.",
+    "Open the related record and find the original event in Stripe Workbench. When a webhook delivery failed, first correct the endpoint or signing configuration, then resend that original event from its delivery details. Confirm the same payment in Coach�D.",
   ),
   stripe_payment_failed: issue(
     "A scheduled payment did not complete",
@@ -190,7 +190,7 @@ export const issueContent = {
   stripe_configuration: issue(
     "Stripe configuration needs review",
     "The deployment is missing payment or webhook configuration.",
-    "Ask the deployment operator to verify the Stripe account, signing configuration and endpoint.",
+    "In Stripe Workbench, verify that the live webhook endpoint ends in /api/v2/stripe-webhook. In Netlify production Functions, check that STRIPE_SECRET_KEY belongs to that Stripe account and STRIPE_WEBHOOK_SECRET belongs to that endpoint. After deploying the repair, confirm the delivery in Stripe and the matching record in Coach�D.",
   ),
   job_failed: issue(
     "Booking maintenance failed",

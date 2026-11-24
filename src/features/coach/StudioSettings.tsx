@@ -1140,6 +1140,7 @@ function DataPanel({
   const store = useStudioStore();
   const [storage, setStorage] = useState<StorageHealth>();
   const [storageError, setStorageError] = useState("");
+  const [checkingStorage, setCheckingStorage] = useState(false);
 
   const cleanupCount = storage
     ? Object.values(storage.cleanupCandidates).reduce(
@@ -1153,6 +1154,7 @@ function DataPanel({
   };
   const refreshStorage = async () => {
     if (isDemo) return;
+    setCheckingStorage(true);
     try {
       setStorageError("");
       setStorage(await loadStorageHealth());
@@ -1162,6 +1164,8 @@ function DataPanel({
           ? reason.message
           : "Storage information could not be loaded.",
       );
+    } finally {
+      setCheckingStorage(false);
     }
   };
   useEffect(() => {
@@ -1244,7 +1248,26 @@ function DataPanel({
             </article>
           </div>
         )}
-        {storageError && <p className="inline-error">{storageError}</p>}
+        {storageError && (
+          <div role="status">
+            <p className="inline-error">{storageError}</p>
+            <p>
+              If the check keeps failing, verify the project's health in
+              Supabase and check the Netlify Functions log for the storage
+              health request. If only a file upload fails, check that the
+              intended bucket exists and the signed-in account has access.
+            </p>
+          </div>
+        )}
+        {!isDemo && (
+          <button
+            type="button"
+            disabled={checkingStorage}
+            onClick={() => void refreshStorage()}
+          >
+            {checkingStorage ? "Checking storage�" : "Check storage again"}
+          </button>
+        )}
         {!isDemo && (
           <div className="storage-retention-note">
             <ShieldCheck />
