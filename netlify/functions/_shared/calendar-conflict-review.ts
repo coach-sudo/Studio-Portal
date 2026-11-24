@@ -161,6 +161,11 @@ export async function reviewCalendarConflict(
     } as const;
   }
   const eventUrl = event.data.htmlLink && new URL(event.data.htmlLink);
+  const googleEventLink =
+    eventUrl &&
+    (eventUrl.origin === "https://calendar.google.com" ||
+      (eventUrl.origin === "https://www.google.com" &&
+        eventUrl.pathname === "/calendar/event"));
   return {
     state: "comparison",
     historical,
@@ -168,10 +173,7 @@ export async function reviewCalendarConflict(
     timingMatches,
     lesson: { start: lesson.starts_at, end: lesson.ends_at },
     event: { start: event.data.start.dateTime, end: event.data.end.dateTime },
-    eventUrl:
-      eventUrl && eventUrl.origin === "https://calendar.google.com"
-        ? eventUrl.href
-        : null,
+    eventUrl: googleEventLink ? eventUrl.href : null,
     version: lesson.version,
     etag: event.data.etag,
   } as const;
