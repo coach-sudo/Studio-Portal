@@ -2,6 +2,48 @@ import { expect, test } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import { ids, installFixture } from "./fixture";
 
+test("shared navigation preserves custom brand contrast", async ({
+  page,
+  context,
+}) => {
+  await installFixture(context, "coach", { coach: "Candidate Coach" });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto("/coach/today");
+  await expect(
+    page.getByRole("heading", { name: "Today", exact: true }),
+  ).toBeVisible({ timeout: 20000 });
+  for (const primaryColor of [
+    "#ffffff",
+    "#787878",
+    "#000000",
+    "#f1e9a8",
+    "#75007e",
+  ]) {
+    await page.evaluate(async (primaryColor) => {
+      const modulePath = "/src/lib/branding.ts";
+      const { applyStudioBranding } = await import(
+        /* @vite-ignore */ modulePath
+      );
+      applyStudioBranding({ primaryColor });
+    }, primaryColor);
+    const audit = await new AxeBuilder({ page })
+      .include(".sidebar")
+      .withRules(["color-contrast"])
+      .analyze();
+    expect(
+      audit.violations.map((violation) => ({
+        id: violation.id,
+        nodes: violation.nodes.map((node) => ({
+          target: node.target,
+          summary: node.failureSummary,
+        })),
+      })),
+      primaryColor,
+    ).toEqual([]);
+  }
+});
+
 for (const width of [390, 768, 1440]) {
   for (const role of ["coach", "student", "guardian"] as const) {
     test(`shared foundations preserve ${role} actions at ${width}px`, async ({
