@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import type { Assignment } from "../domain/model";
 import { useUnsavedWorkspaceChanges } from "../hooks/useWorkspaceLocation";
 import { ApiClientError } from "../data/apiClientError";
+import { AssignmentAttachments } from "./AssignmentAttachments";
 
 export function AssignmentActivity({
   assignment,
@@ -13,6 +14,7 @@ export function AssignmentActivity({
   onComplete,
   onHelp,
   readOnly = false,
+  attachmentStudioId,
 }: {
   assignment: Assignment;
   busy: boolean;
@@ -20,6 +22,7 @@ export function AssignmentActivity({
   onComplete: () => void;
   onHelp: () => void;
   readOnly?: boolean;
+  attachmentStudioId?: string;
 }) {
   const [responses, setResponses] = useState<Record<string, unknown>>(
     assignment.responses || {},
@@ -31,9 +34,12 @@ export function AssignmentActivity({
   const [saved, setSaved] = useState(false);
   const [richJournal, setRichJournal] = useState(false);
   const [writeConflict, setWriteConflict] = useState(false);
+  const [attachmentPending, setAttachmentPending] = useState(false);
   const conflict =
     dirty && (writeConflict || assignment.version !== editingVersion);
-  useUnsavedWorkspaceChanges(!readOnly && (dirty || saving));
+  useUnsavedWorkspaceChanges(
+    !readOnly && (dirty || saving || attachmentPending),
+  );
   useEffect(() => {
     if (dirty || saving) return;
     setResponses(assignment.responses || {});
@@ -173,6 +179,22 @@ export function AssignmentActivity({
           ))}
         </div>
       )}
+      {attachmentStudioId &&
+        (!readOnly || assignment.status === "completed") && (
+          <AssignmentAttachments
+            scope={{
+              assignmentId: assignment.id,
+              studentId: assignment.studentId,
+              studioId: attachmentStudioId,
+            }}
+            canEdit={
+              !readOnly &&
+              ["assigned", "in_progress", "reopened"].includes(assignment.status)
+            }
+            disabled={busy || saving}
+            onPendingChange={setAttachmentPending}
+          />
+        )}
       {!readOnly && (
         <div className="form-actions assignment-actions">
           {(conflict || saveError) && (
@@ -204,7 +226,7 @@ export function AssignmentActivity({
             <button
               type="button"
               className="primary"
-              disabled={busy || saving || dirty}
+              disabled={busy || saving || dirty || attachmentPending}
               onClick={onComplete}
             >
               Complete &amp; archive

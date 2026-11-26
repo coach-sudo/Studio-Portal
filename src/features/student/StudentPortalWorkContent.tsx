@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { CheckSquare, FolderOpen, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { AssignmentActivity } from "../../components/AssignmentActivity";
+import { AssignmentAttachments } from "../../components/AssignmentAttachments";
 import "../../components/IdentityActions.css";
 import {
   Dialog,
@@ -193,6 +194,7 @@ export function Practice({
                 </Status>
               </header>
               <AssignmentActivity
+                attachmentStudioId={isDemo ? undefined : data.studioId}
                 readOnly={data.role === "guardian"}
                 assignment={item}
                 busy={busyId === item.id}
@@ -231,6 +233,15 @@ export function Practice({
                           data.settings.timezone,
                         )}
                       </small>
+                      {!isDemo && (
+                        <AssignmentAttachments
+                          scope={{
+                            assignmentId: item.id,
+                            studentId: item.studentId,
+                            studioId: data.studioId,
+                          }}
+                        />
+                      )}
                     </div>
                     <Status tone="good">completed</Status>
                   </article>

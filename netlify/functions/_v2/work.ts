@@ -158,7 +158,7 @@ export async function handleWorkCommands(
       input.payload.composerNoteId === undefined
         ? undefined
         : z.uuid().parse(input.payload.composerNoteId);
-    const status = input.payload.status === "draft" ? "draft" : "published";
+    const status = input.payload.status === "published" ? "published" : "draft";
     const content = {
       lesson_id: lessonId,
       student_id: studentId,
@@ -236,6 +236,16 @@ export async function handleWorkCommands(
       .single();
     if (readError || !before || before.students.studio_id !== studioId)
       throw new Error("FORBIDDEN");
+    if (
+      before.status === "published" &&
+      input.payload.status !== "published" &&
+      input.payload.status !== "archived"
+    )
+      throw new AppError("REVIEW_REQUIRED", {
+        status: 409,
+        message:
+          "Use private recovery for unpublished edits. Review before publishing changes.",
+      });
     const status = ["draft", "published", "archived"].includes(
       String(input.payload.status),
     )
@@ -603,12 +613,26 @@ export async function handleWorkCommands(
     ["complete", "help", "save_response"].includes(input.command) &&
     input.entityId
   ) {
-    const { data: before, error: readError } = await db
-      .from("assignments")
-      .select("*,students!inner(studio_id)")
-      .eq("id", input.entityId)
-      .single();
-    if (readError || !before) throw readError || new Error("FORBIDDEN");
+    const [{ data: before, error: readError }, { data: identity }] =
+      await Promise.all([
+        db
+          .from("assignments")
+          .select(
+            "*,students!inner(studio_id,user_id,portal_enabled,deleted_at)",
+          )
+          .eq("id", input.entityId)
+          .single(),
+        db.auth.getUser(),
+      ]);
+    if (
+      readError ||
+      !before ||
+      !identity.user ||
+      before.students.user_id !== identity.user.id ||
+      !before.students.portal_enabled ||
+      before.students.deleted_at
+    )
+      throw AppError.forbidden(readError);
     const changes =
       input.command === "complete"
         ? {
@@ -637,6 +661,7 @@ export async function handleWorkCommands(
       .from("assignments")
       .update(changes)
       .eq("id", input.entityId)
+      .eq("student_id", before.student_id)
       .eq("version", input.expectedVersion)
       .select()
       .maybeSingle();

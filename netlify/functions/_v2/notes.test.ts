@@ -78,6 +78,51 @@ describe("lesson note composer draft saves", () => {
     expect(serviceClient).not.toHaveBeenCalled();
   });
 
+  it("defaults a create without a publication decision to a private draft", async () => {
+    const { context, insert } = draftCreate();
+    delete context.input.payload.status;
+    await handleWorkCommands(context);
+    expect(insert).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "draft", published_at: null }),
+    );
+    expect(serviceClient).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, "draft"])(
+    "leaves the published revision intact for an update with status %s",
+    async (status) => {
+      const context = {
+        requireCoach: async () => "studio",
+        db: {
+          from: () => ({
+            select: () => ({
+              eq: () => ({
+                single: async () => ({
+                  data: {
+                    ...saved,
+                    status: "published",
+                    students: { studio_id: "studio" },
+                  },
+                }),
+              }),
+            }),
+          }),
+        },
+        domain: "notes",
+        input: {
+          command: "update",
+          entityId: noteId,
+          expectedVersion: 1,
+          payload: { body: "Unreviewed private edit", status },
+        },
+      } as unknown as V2CommandContext;
+      await expect(handleWorkCommands(context)).rejects.toMatchObject({
+        code: "REVIEW_REQUIRED",
+      });
+      expect(serviceClient).not.toHaveBeenCalled();
+    },
+  );
+
   it("recovers an interrupted insert only for the same scoped draft content", async () => {
     const { audit, context, lookup } = draftCreate(saved);
     const response = await handleWorkCommands(context);

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Dialog } from "../../components/Primitives";
 import { RichWritingArea } from "../../components/RichWritingArea";
 import { cleanWritingHtml } from "../../lib/writingHtml";
@@ -7,6 +7,7 @@ import { recordLink } from "../../app/recordLinks";
 import type { Lesson, Note, Student } from "../../domain/model";
 import { useUnsavedWorkspaceChanges } from "../../hooks/useWorkspaceLocation";
 import { formatStudioDateTime } from "../../domain/presentation";
+import { useLessonNoteRecovery } from "./useLessonNoteRecovery";
 import "./LessonNoteComposer.css";
 
 export function LessonNoteComposer({
@@ -16,6 +17,7 @@ export function LessonNoteComposer({
   note,
   attachments,
   initialLessonId,
+  privateRecovery = false,
   onClose,
   onSave,
   onAttach,
@@ -26,13 +28,14 @@ export function LessonNoteComposer({
   note?: Note;
   attachments: Array<{ id: string; title: string }>;
   initialLessonId?: string;
+  privateRecovery?: boolean;
   onClose: () => void;
-  onSave: (note: Note, creating: boolean) => Promise<Note>;
+  onSave: (note: Note, creating: boolean, actorId?: string) => Promise<Note>;
   onAttach: (note: Note) => void;
 }) {
   const fieldId = useId();
   const [saved, setSaved] = useState(note);
-  const [newId] = useState(() => crypto.randomUUID());
+  const [newId, setNewId] = useState<string>(() => crypto.randomUUID());
   const [title, setTitle] = useState(note?.title || "Lesson note");
   const [lessonId, setLessonId] = useState(
     note?.lessonId || initialLessonId || lessons[0]?.id || "",
@@ -43,6 +46,11 @@ export function LessonNoteComposer({
   });
   const lesson = lessons.find((item) => item.id === lessonId);
   const [savedBody, setSavedBody] = useState(body);
+  const [editorInitial, setEditorInitial] = useState(body);
+  const [editorReset, setEditorReset] = useState(0);
+  const [openedRecoveryScope, setOpenedRecoveryScope] = useState("");
+  const [restored, setRestored] = useState(false);
+  const [discarding, setDiscarding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [conflict, setConflict] = useState(false);
@@ -58,12 +66,68 @@ export function LessonNoteComposer({
     lessonId !== (saved?.lessonId || initialLessonId || lessons[0]?.id || "") ||
     body.html !== savedBody.html ||
     body.text !== savedBody.text;
-  const canDiscard = useUnsavedWorkspaceChanges(dirty || busy || !!retry);
+  const recoveryScope = JSON.stringify([
+    student.id,
+    saved?.id ?? null,
+    saved ? null : (initialLessonId ?? null),
+  ]);
+  const hydrated = recoveryScope === openedRecoveryScope;
+  const recoveryContent = useMemo(
+    () => ({
+      workingNoteId: saved?.id ?? newId,
+      baseVersion: saved?.version ?? 0,
+      lessonId: lessonId || null,
+      title,
+      body: body.text,
+      bodyHtml: body.html,
+    }),
+    [body.html, body.text, lessonId, newId, saved?.id, saved?.version, title],
+  );
+  const recovery = useLessonNoteRecovery({
+    enabled: privateRecovery,
+    studentId: student.id,
+    noteId: saved?.id ?? null,
+    openingLessonId: saved ? null : (initialLessonId ?? null),
+    content: recoveryContent,
+    hydrated,
+    dirty,
+    paused: busy || !!retry || discarding,
+  });
+  const { current: recoverySession, restored: persistedRecovery } = recovery;
+  const canDiscard = useUnsavedWorkspaceChanges(
+    (dirty && !recovery.matchesReceipt) || busy || !!retry || discarding,
+  );
   const valid =
     (!!lesson || !!saved?.lessonId) && !!title.trim() && !!body.text.trim();
   const published = saved?.status === "published";
-  const locked = busy || !!retry;
+  const locked =
+    busy || !!retry || discarding || (privateRecovery && !hydrated);
   const allowWriting = !locked && !review;
+  const writeConflict = conflict || recovery.conflict || recovery.hasStaleBase;
+
+  useEffect(() => {
+    if (!privateRecovery || !recoverySession || hydrated) return;
+    if (persistedRecovery) {
+      const restoredBody = {
+        text: persistedRecovery.body,
+        html: cleanWritingHtml(persistedRecovery.bodyHtml, true),
+      };
+      setNewId(persistedRecovery.workingNoteId);
+      setTitle(persistedRecovery.title);
+      setLessonId(persistedRecovery.lessonId ?? "");
+      setBody(restoredBody);
+      setEditorInitial(restoredBody);
+      setEditorReset((value) => value + 1);
+      setRestored(true);
+    }
+    setOpenedRecoveryScope(recoveryScope);
+  }, [
+    hydrated,
+    persistedRecovery,
+    privateRecovery,
+    recoverySession,
+    recoveryScope,
+  ]);
 
   useEffect(() => {
     const viewport = window.visualViewport;
@@ -94,7 +158,8 @@ export function LessonNoteComposer({
     if (
       inFlight.current ||
       (!retry && (!valid || (status === "published" && !lesson))) ||
-      conflict
+      writeConflict ||
+      (privateRecovery && !hydrated)
     )
       return;
     const attempt = retry ?? {
@@ -115,14 +180,31 @@ export function LessonNoteComposer({
     inFlight.current = true;
     setBusy(true);
     setError("");
+    let sentNoteAction = false;
     try {
-      const result = await onSave(attempt.note, attempt.creating);
+      if (privateRecovery && dirty && !retry)
+        await recovery.sync(recoveryContent);
+      sentNoteAction = true;
+      const result = await onSave(
+        attempt.note,
+        attempt.creating,
+        recoverySession?.gateway.actorId,
+      );
+      try {
+        await recovery.discard();
+      } catch {
+        setError(
+          "The note was saved. The server did not confirm removing its recovery copy.",
+        );
+      }
       setSaved(result);
       setTitle(result.title);
       setSavedBody(body);
+      setRestored(false);
       setRetry(null);
       setReview(false);
     } catch (reason) {
+      if (!sentNoteAction) return;
       const versionConflict =
         reason instanceof ApiClientError && reason.code === "VERSION_CONFLICT";
       const uncertain =
@@ -144,12 +226,38 @@ export function LessonNoteComposer({
     }
   };
   const close = () => {
-    if (inFlight.current) return;
+    if (inFlight.current || discarding) return;
     if (review) {
       setReview(false);
       return;
     }
     if (canDiscard()) onClose();
+  };
+  const discardRecovery = async () => {
+    if (
+      inFlight.current ||
+      discarding ||
+      !window.confirm(
+        "Discard these private edits and return to the last saved note?",
+      )
+    )
+      return;
+    setDiscarding(true);
+    try {
+      await recovery.discard();
+      setRestored(false);
+      setReview(false);
+      setTitle(saved?.title || "Lesson note");
+      setLessonId(saved?.lessonId || initialLessonId || lessons[0]?.id || "");
+      setBody(savedBody);
+      setEditorInitial(savedBody);
+      setEditorReset((value) => value + 1);
+      setError("");
+    } catch {
+      // The recovery service reports whether the discard was acknowledged.
+    } finally {
+      setDiscarding(false);
+    }
   };
 
   return (
@@ -213,10 +321,11 @@ export function LessonNoteComposer({
               />
             </label>
             <RichWritingArea
+              key={editorReset}
               label="Note"
               preserveInlineStyles
-              initialHtml={note?.bodyHtml}
-              initialText={note?.body}
+              initialHtml={editorInitial.html}
+              initialText={editorInitial.text}
               disabled={!allowWriting}
               onChange={setBody}
               actions={
@@ -278,20 +387,45 @@ export function LessonNoteComposer({
             <span role="status">
               {busy
                 ? "Saving…"
-                : dirty
-                  ? "Unsaved changes"
-                  : saved
-                    ? published
-                      ? "Published to student"
-                      : "Private draft saved"
-                    : "New private draft"}
+                : recovery.loading
+                  ? "Checking private recovery…"
+                  : recovery.writing
+                    ? "Saving recovery copy…"
+                    : dirty && recovery.matchesReceipt
+                      ? restored
+                        ? "Private draft recovered"
+                        : "Private recovery copy saved"
+                      : dirty
+                        ? "Unsaved changes"
+                        : saved
+                          ? published
+                            ? "Published to student"
+                            : "Private draft saved"
+                          : "New private draft"}
             </span>
             {error && <p role="alert">{error}</p>}
-            {conflict && (
+            {recovery.readError && (
+              <p role="alert">
+                {recovery.readError}{" "}
+                <button type="button" onClick={recovery.retryRead}>
+                  Retry
+                </button>
+              </p>
+            )}
+            {recovery.writeError && !error && (
+              <p role="alert">{recovery.writeError}</p>
+            )}
+            {recovery.hasStaleBase && (
+              <p role="alert">
+                A newer note version exists. Your private edits are available
+                here for comparison.
+              </p>
+            )}
+            {writeConflict && saved && (
               <a
                 href={recordLink("coach", {
                   kind: "note",
-                  id: saved?.id || newId,
+                  id: saved.id,
                   studentId: student.id,
                 })}
                 target="_blank"
@@ -299,6 +433,29 @@ export function LessonNoteComposer({
               >
                 Open latest note
               </a>
+            )}
+            {privateRecovery &&
+              recovery.writeError &&
+              !writeConflict &&
+              !retry && (
+                <button
+                  type="button"
+                  disabled={locked}
+                  onClick={() =>
+                    void recovery.sync(recoveryContent).catch(() => undefined)
+                  }
+                >
+                  Retry recovery save
+                </button>
+              )}
+            {recovery.hasReceipt && dirty && (
+              <button
+                type="button"
+                disabled={locked}
+                onClick={() => void discardRecovery()}
+              >
+                Discard private edits
+              </button>
             )}
           </div>
           <div className="form-actions">
@@ -324,7 +481,7 @@ export function LessonNoteComposer({
                 <button
                   type="button"
                   className="primary"
-                  disabled={busy || conflict || !valid || !lesson}
+                  disabled={locked || writeConflict || !valid || !lesson}
                   onClick={() => void persist("published")}
                 >
                   {published ? "Publish changes" : "Publish note"}
@@ -332,11 +489,22 @@ export function LessonNoteComposer({
               </>
             ) : (
               <>
-                {!published && (
+                {(!published || privateRecovery) && (
                   <button
                     type="button"
-                    disabled={!valid || busy || conflict || (!dirty && !!saved)}
-                    onClick={() => void persist("draft")}
+                    disabled={
+                      locked ||
+                      writeConflict ||
+                      (!published && !valid) ||
+                      (!dirty && !!saved)
+                    }
+                    onClick={() => {
+                      if (published)
+                        void recovery
+                          .sync(recoveryContent)
+                          .catch(() => undefined);
+                      else void persist("draft");
+                    }}
                   >
                     Save draft
                   </button>
@@ -344,7 +512,7 @@ export function LessonNoteComposer({
                 <button
                   type="button"
                   className="primary"
-                  disabled={!valid || !lesson || busy || conflict}
+                  disabled={!valid || !lesson || locked || writeConflict}
                   onClick={() => setReview(true)}
                 >
                   Review publication

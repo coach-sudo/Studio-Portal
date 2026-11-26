@@ -382,7 +382,11 @@ export function StudentWorkspace() {
       );
     }
   };
-  const saveNote = async (note: Note, creating: boolean): Promise<Note> => {
+  const saveNote = async (
+    note: Note,
+    creating: boolean,
+    actorId?: string,
+  ): Promise<Note> => {
     if (isDemo) {
       const saved = { ...note, version: creating ? 1 : note.version + 1 };
       store.transact((draft) => {
@@ -392,25 +396,29 @@ export function StudentWorkspace() {
       });
       return saved;
     }
-    const result = await studioCommand("notes", {
-      command: creating ? "create" : "update",
-      entityId: creating ? undefined : note.id,
-      expectedVersion: creating ? 0 : note.version,
-      payload: {
-        studentId: student.id,
-        lessonId: note.lessonId,
-        title: note.title,
-        body: note.body,
-        bodyHtml: note.bodyHtml,
-        richContent: note.richContent,
-        status: note.status,
-        composerNoteId: note.id,
+    const result = await studioCommand(
+      "notes",
+      {
+        command: creating ? "create" : "update",
+        entityId: creating ? undefined : note.id,
+        expectedVersion: creating ? 0 : note.version,
+        payload: {
+          studentId: student.id,
+          lessonId: note.lessonId,
+          title: note.title,
+          body: note.body,
+          bodyHtml: note.bodyHtml,
+          richContent: note.richContent,
+          status: note.status,
+          composerNoteId: note.id,
+        },
+        reason:
+          note.status === "published"
+            ? "Coach published lesson notes"
+            : "Coach saved a private lesson note",
       },
-      reason:
-        note.status === "published"
-          ? "Coach published lesson notes"
-          : "Coach saved a private lesson note",
-    });
+      actorId,
+    );
     void invalidateStudioDomains(queryClient, ["work"]);
     return {
       ...note,
@@ -915,6 +923,7 @@ export function StudentWorkspace() {
               material.status === "active",
           )}
           initialLessonId={workflowLessonId}
+          privateRecovery={!isDemo}
           onClose={() => {
             setDialog(null);
             setWorkflowLessonId(undefined);

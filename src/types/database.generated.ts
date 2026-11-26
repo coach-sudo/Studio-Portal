@@ -101,6 +101,67 @@ export type Database = {
           },
         ]
       }
+      assignment_attachments: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          file_size_bytes: number
+          id: string
+          mime_type: string
+          original_name: string
+          storage_path: string
+          student_id: string
+          studio_id: string
+          submitted_at: string | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          file_size_bytes: number
+          id?: string
+          mime_type: string
+          original_name: string
+          storage_path: string
+          student_id: string
+          studio_id: string
+          submitted_at?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          file_size_bytes?: number
+          id?: string
+          mime_type?: string
+          original_name?: string
+          storage_path?: string
+          student_id?: string
+          studio_id?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_attachments_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_attachments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_attachments_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
           activity_config: Json
@@ -4815,6 +4876,27 @@ export type Database = {
         Args: { p_invoice: string; p_line: string; p_version: number }
         Returns: Json
       }
+      attach_assignment_file: {
+        Args: { p_assignment: string; p_hash: string; p_name: string }
+        Returns: {
+          assignment_id: string
+          created_at: string
+          file_size_bytes: number
+          id: string
+          mime_type: string
+          original_name: string
+          storage_path: string
+          student_id: string
+          studio_id: string
+          submitted_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "assignment_attachments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       attach_studio_invoice_checkout: {
         Args: { p_invoice: string; p_key: string; p_session: string }
         Returns: undefined
@@ -5608,6 +5690,16 @@ export type Database = {
         }
         Returns: Json
       }
+      manage_lesson_note_recovery: {
+        Args: {
+          p_action: string
+          p_launch_lesson_id: string
+          p_note_id: string
+          p_payload: Json
+          p_student_id: string
+        }
+        Returns: Json
+      }
       manage_material_resources: {
         Args: {
           p_command: string
@@ -5732,6 +5824,10 @@ export type Database = {
       }
       release_studio_invoice_checkout: {
         Args: { p_invoice: string; p_key: string }
+        Returns: undefined
+      }
+      remove_assignment_file: {
+        Args: { p_assignment: string; p_attachment: string }
         Returns: undefined
       }
       render_campaign_text: {

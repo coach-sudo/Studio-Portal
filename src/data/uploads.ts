@@ -47,6 +47,55 @@ function progressFetch(transfer: UploadTransfer): typeof fetch {
   };
 }
 
+export async function uploadContentHash(file: File) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    await file.arrayBuffer(),
+  );
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export async function uploadAuthenticatedObject(
+  bucket: string,
+  path: string,
+  file: File,
+  mimeType: string,
+  userId: string,
+  transfer?: UploadTransfer,
+) {
+  if (!supabase) throw new Error("File storage is not configured.");
+  let storage = supabase.storage;
+  if (transfer) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session || session.user.id !== userId)
+      throw new Error("Sign in again to continue the upload.");
+    transfer.signal.throwIfAborted();
+    storage = createClient(
+      import.meta.env.VITE_SUPABASE_URL,
+      import.meta.env.VITE_SUPABASE_ANON_KEY,
+      {
+        accessToken: async () => session.access_token,
+        global: { fetch: progressFetch(transfer) },
+      },
+    ).storage;
+  }
+  const { error } = await storage
+    .from(bucket)
+    .upload(path, new Blob([file], { type: mimeType }), {
+      contentType: mimeType,
+      upsert: false,
+      cacheControl: bucket === "studio-materials" ? "3600" : "0",
+    });
+  transfer?.signal.throwIfAborted();
+  if (error && !("statusCode" in error && String(error.statusCode) === "409"))
+    throw error;
+  return { deduplicated: !!error };
+}
+
 export async function uploadStudioFile(
   input: {
     studioId: string;
@@ -73,13 +122,7 @@ export async function uploadStudioFile(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Sign in before uploading a file.");
-  const digest = await crypto.subtle.digest(
-    "SHA-256",
-    await input.file.arrayBuffer(),
-  );
-  const contentHash = [...new Uint8Array(digest)]
-    .map((byte) => byte.toString(16).padStart(2, "0"))
-    .join("");
+  const contentHash = await uploadContentHash(input.file);
   const findExisting = async () => {
     let query = supabase!
       .from("file_assets")
@@ -112,36 +155,14 @@ export async function uploadStudioFile(
   // MIME and size are verified on reuse; names never establish file identity.
   const owner = input.studentId || input.studioId;
   const path = `${input.studioId}/${owner}/${input.visibility || "private"}/sha256-${contentHash}`;
-  let storage = supabase.storage;
-  if (transfer) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session || session.user.id !== user.id)
-      throw new Error("Sign in again to continue the upload.");
-    transfer.signal.throwIfAborted();
-    storage = createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_ANON_KEY,
-      {
-        accessToken: async () => session.access_token,
-        global: { fetch: progressFetch(transfer) },
-      },
-    ).storage;
-  }
-  const { error: uploadError } = await storage
-    .from("studio-materials")
-    .upload(path, new Blob([input.file], { type: mimeType }), {
-      contentType: mimeType,
-      upsert: false,
-      cacheControl: "3600",
-    });
-  transfer?.signal.throwIfAborted();
-  if (
-    uploadError &&
-    !("statusCode" in uploadError && String(uploadError.statusCode) === "409")
-  )
-    throw uploadError;
+  const { deduplicated } = await uploadAuthenticatedObject(
+    "studio-materials",
+    path,
+    input.file,
+    mimeType,
+    user.id,
+    transfer,
+  );
   const { data, error } = await supabase
     .from("file_assets")
     .insert({
@@ -186,6 +207,6 @@ export async function uploadStudioFile(
     signedUrl: signed?.signedUrl,
     mimeType: mimeType,
     fileSizeBytes: input.file.size,
-    deduplicated: !!uploadError,
+    deduplicated,
   };
 }

@@ -716,6 +716,7 @@ export function LessonHub({
                       </Status>
                     </header>
                     <AssignmentActivity
+                      attachmentStudioId={isDemo ? undefined : data.studioId}
                       readOnly={data.role === "guardian"}
                       assignment={item}
                       busy={assignmentBusy === item.id}
