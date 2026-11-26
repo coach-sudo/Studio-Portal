@@ -213,6 +213,20 @@ it("includes valid contact values explicitly approved in the revision", async ()
   });
 });
 
+it.each(["+12025550123;ext=4", "+1 202 555 0123 ext. 4"])(
+  "preserves approved telephone extensions in %s",
+  async (phone) => {
+    content().contactPhone = phone;
+    content().showPhone = true;
+    expect(await (await request()).json()).toMatchObject({
+      contactPhone: phone,
+      showPhone: true,
+    });
+    content().showPhone = false;
+    expect(await (await request()).json()).not.toHaveProperty("contactPhone");
+  },
+);
+
 it.each(["", undefined])(
   "keeps the published biography empty for %s",
   async (bio) => {

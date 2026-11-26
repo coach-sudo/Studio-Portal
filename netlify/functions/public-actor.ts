@@ -1,6 +1,9 @@
 import type { Config, Context } from "@netlify/functions";
 import { z } from "zod";
-import { actorLayoutSchema } from "../../src/domain/actorLayout";
+import {
+  actorLayoutSchema,
+  actorPortfolioSchema,
+} from "../../src/domain/actorLayout";
 import { apiError, correlationId, json } from "./_shared/http";
 import { serviceClient } from "./_shared/supabase";
 
@@ -39,12 +42,7 @@ const revisionContent = z.object({
   representation: optionalText,
   accentColor: color,
   contactEmail: z.string().email().optional().catch(undefined),
-  contactPhone: z
-    .string()
-    .trim()
-    .regex(/^\+?[()\d][\d ().-]*$/)
-    .optional()
-    .catch(undefined),
+  contactPhone: actorPortfolioSchema.shape.contactPhone.catch(undefined),
   showEmail: z.literal(true).optional().catch(undefined),
   showPhone: z.literal(true).optional().catch(undefined),
   primaryHeadshotMaterialId: z.string().uuid().optional().catch(undefined),
