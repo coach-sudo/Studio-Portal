@@ -52,21 +52,29 @@ describe("Student assignment submission", () => {
     };
     mutation.mockReturnValue(writes);
     serviceClient.mockReturnValue({ from: () => ({ update: mutation }) });
-    const response = await handleWorkCommands(assignmentContext(learner, "complete"));
-    expect(mutation).toHaveBeenCalledWith(expect.objectContaining({ status: "completed", version: 2 }));
+    const response = await handleWorkCommands(
+      assignmentContext(learner, "complete"),
+    );
+    expect(mutation).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "completed", version: 2 }),
+    );
     expect(writes.eq.mock.calls).toEqual([
       ["id", "assignment"],
       ["student_id", "student"],
       ["version", 1],
     ]);
-    expect(await response?.json()).toMatchObject({ resource: { status: "completed" } });
+    expect(await response?.json()).toMatchObject({
+      resource: { status: "completed" },
+    });
   });
 
   it.each(["complete", "save_response", "help"])(
     "denies %s when a household account can read the assignment",
     async (command) => {
       serviceClient.mockClear();
-      await expect(handleWorkCommands(assignmentContext(parent, command))).rejects.toMatchObject({
+      await expect(
+        handleWorkCommands(assignmentContext(parent, command)),
+      ).rejects.toMatchObject({
         code: "FORBIDDEN",
       });
       expect(serviceClient).not.toHaveBeenCalled();

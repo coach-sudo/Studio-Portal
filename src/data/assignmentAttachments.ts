@@ -75,14 +75,11 @@ export async function attachAssignmentFile(
   } = await client.auth.getSession();
   if (session?.user.id !== identity)
     throw new Error("Sign in again to attach this file.");
-  const { error } = await client.rpc(
-    "attach_assignment_file",
-    {
-      p_assignment: assignmentId,
-      p_hash: contentHash,
-      p_name: fileName.trim().slice(0, 255) || "Attachment",
-    },
-  );
+  const { error } = await client.rpc("attach_assignment_file", {
+    p_assignment: assignmentId,
+    p_hash: contentHash,
+    p_name: fileName.trim().slice(0, 255) || "Attachment",
+  });
   if (error?.message === "ATTACHMENT_LIMIT")
     throw new Error("An assignment can have up to 12 files.");
   if (error?.message === "ASSIGNMENT_CLOSED")
@@ -94,13 +91,10 @@ export async function removeAssignmentFile(
   assignmentId: string,
   attachmentId: string,
 ) {
-  const { error } = await storageClient().rpc(
-    "remove_assignment_file",
-    {
-      p_assignment: assignmentId,
-      p_attachment: attachmentId,
-    },
-  );
+  const { error } = await storageClient().rpc("remove_assignment_file", {
+    p_assignment: assignmentId,
+    p_attachment: attachmentId,
+  });
   if (error) throw new Error("The file could not be removed.");
 }
 
