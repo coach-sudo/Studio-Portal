@@ -115,6 +115,13 @@ for (const width of widths) {
     });
     expect.soft(bounds.fits).toBe(true);
     if (mobile) {
+      const titleFits = await preview.locator("h1").evaluate((title) => {
+        const rect = title.getBoundingClientRect();
+        return (
+          title.scrollWidth <= title.clientWidth + 1 && rect.right <= innerWidth
+        );
+      });
+      expect.soft(titleFits).toBe(true);
       await expect.soft(toggle).toBeHidden();
       expect.soft(bounds.contained).toBe(true);
       expect.soft(bounds.nestedScroll).toBe(false);
