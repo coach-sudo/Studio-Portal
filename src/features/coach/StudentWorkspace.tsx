@@ -1,12 +1,9 @@
 import { workSectionSearch } from "../../hooks/useWorkView";
-import {
-  useUnsavedWorkspaceChanges,
-  useWorkspaceNavigation,
-} from "../../hooks/useWorkspaceLocation";
+import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
+import { LessonNoteComposer } from "./LessonNoteComposer";
 import { RecordUnavailable } from "../../components/RecordRoute";
 import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
-import DOMPurify from "dompurify";
 import {
   ArrowLeft,
   Mail,
@@ -20,7 +17,6 @@ import {
   lazy,
   Suspense,
   useEffect,
-  useRef,
   useState,
   useSyncExternalStore,
   type FormEvent,
@@ -386,53 +382,41 @@ export function StudentWorkspace() {
       );
     }
   };
-  const addNote = async (note: Note, attach = false) => {
-    try {
-      let savedNote = note;
-      const existing = data.notes.find((item) => item.id === note.id);
-      if (isDemo)
-        store.transact((draft) => {
-          const current = draft.notes.find((item) => item.id === note.id);
-          if (current)
-            Object.assign(current, note, { version: current.version + 1 });
-          else draft.notes.push(note);
-        });
-      else {
-        const result = await studioCommand("notes", {
-          command: existing ? "update" : "create",
-          entityId: existing?.id,
-          expectedVersion: existing?.version ?? 0,
-          payload: {
-            studentId: student.id,
-            lessonId: note.lessonId,
-            title: note.title,
-            body: note.body,
-            bodyHtml: note.bodyHtml,
-            richContent: note.richContent,
-            status: note.status,
-          },
-          reason: "Coach created student note",
-        });
-        savedNote = {
-          ...note,
-          id: result.resource.id,
-          version: result.resource.version,
-        };
-        await invalidateStudioDomains(queryClient, ["work"]);
-      }
-      setDialog(attach ? "note-resource" : null);
-      setWorkflowLessonId(attach ? savedNote.lessonId : undefined);
-      setEditingNote(attach ? savedNote : undefined);
-      setNotice(
-        note.status === "published"
-          ? "Note published to the student."
-          : "Private draft saved.",
-      );
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error ? reason.message : "Note could not be saved.",
-      );
+  const saveNote = async (note: Note, creating: boolean): Promise<Note> => {
+    if (isDemo) {
+      const saved = { ...note, version: creating ? 1 : note.version + 1 };
+      store.transact((draft) => {
+        const current = draft.notes.find((item) => item.id === note.id);
+        if (current) Object.assign(current, saved);
+        else draft.notes.push(saved);
+      });
+      return saved;
     }
+    const result = await studioCommand("notes", {
+      command: creating ? "create" : "update",
+      entityId: creating ? undefined : note.id,
+      expectedVersion: creating ? 0 : note.version,
+      payload: {
+        studentId: student.id,
+        lessonId: note.lessonId,
+        title: note.title,
+        body: note.body,
+        bodyHtml: note.bodyHtml,
+        richContent: note.richContent,
+        status: note.status,
+        composerNoteId: note.id,
+      },
+      reason:
+        note.status === "published"
+          ? "Coach published lesson notes"
+          : "Coach saved a private lesson note",
+    });
+    void invalidateStudioDomains(queryClient, ["work"]);
+    return {
+      ...note,
+      id: result.resource.id,
+      version: result.resource.version,
+    };
   };
   const deleteNote = async (note: Note) => {
     if (!window.confirm(`Delete “${note.title}”? This cannot be undone.`))
@@ -919,18 +903,29 @@ export function StudentWorkspace() {
         />
       )}
       {dialog === "note" && (
-        <NoteForm
+        <LessonNoteComposer
           student={student}
           lessons={studentLessons}
           timezone={data.settings.timezone}
           note={editingNote}
+          attachments={data.materials.filter(
+            (material) =>
+              material.noteId &&
+              material.noteId === editingNote?.id &&
+              material.status === "active",
+          )}
           initialLessonId={workflowLessonId}
           onClose={() => {
             setDialog(null);
             setWorkflowLessonId(undefined);
             setEditingNote(undefined);
           }}
-          onSave={addNote}
+          onSave={saveNote}
+          onAttach={(saved) => {
+            setWorkflowLessonId(saved.lessonId);
+            setEditingNote(saved);
+            setDialog("note-resource");
+          }}
         />
       )}
     </div>
@@ -1471,230 +1466,6 @@ function MaterialForm({
     </Drawer>
   );
 }
-function NoteForm({
-  student,
-  lessons,
-  timezone,
-  note,
-  initialLessonId,
-  onClose,
-  onSave,
-}: {
-  student: Student;
-  lessons: Lesson[];
-  timezone: string;
-  note?: Note;
-  initialLessonId?: string;
-  onClose: () => void;
-  onSave: (n: Note, attach?: boolean) => Promise<void>;
-}) {
-  const [title, setTitle] = useState(note?.title || "Lesson note"),
-    [body, setBody] = useState(note?.bodyHtml || note?.body || ""),
-    [published, setPublished] = useState(note?.status === "published"),
-    [lessonId, setLessonId] = useState(
-      note?.lessonId || initialLessonId || lessons[0]?.id || "",
-    );
-  const [saving, setSaving] = useState(false);
-  const initial = useRef(JSON.stringify({ title, body, published, lessonId }));
-  const canDiscard = useUnsavedWorkspaceChanges(
-    JSON.stringify({ title, body, published, lessonId }) !== initial.current,
-  );
-  const close = () => {
-    if (canDiscard()) onClose();
-  };
-  const editorRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!editorRef.current) return;
-    editorRef.current.innerHTML = DOMPurify.sanitize(
-      note?.bodyHtml || note?.body || "",
-    );
-  }, [note?.id]);
-  const format = (command: string, value?: string) => {
-    editorRef.current?.focus();
-    document.execCommand(command, false, value);
-    setBody(editorRef.current?.innerHTML || "");
-  };
-  return (
-    <Drawer
-      title={note ? "Edit note" : "New note"}
-      description={student.fullName}
-      onClose={close}
-    >
-      <form
-        className="workflow-form"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (saving) return;
-          setSaving(true);
-          try {
-            await onSave(
-              {
-                id: note?.id || uid("note"),
-                studentId: student.id,
-                lessonId,
-                title,
-                body: (
-                  editorRef.current?.innerText ||
-                  editorRef.current?.textContent ||
-                  ""
-                ).trim(),
-                bodyHtml: DOMPurify.sanitize(body, {
-                  ALLOWED_TAGS: [
-                    "p",
-                    "div",
-                    "br",
-                    "strong",
-                    "b",
-                    "em",
-                    "i",
-                    "u",
-                    "a",
-                    "ul",
-                    "ol",
-                    "li",
-                    "span",
-                  ],
-                  ALLOWED_ATTR: ["href", "target", "rel", "style"],
-                }),
-                status: published ? "published" : "draft",
-                version: note?.version || 1,
-                updatedAt: now(),
-              },
-              (e.nativeEvent as SubmitEvent).submitter?.getAttribute(
-                "data-attach",
-              ) === "true",
-            );
-          } finally {
-            setSaving(false);
-          }
-        }}
-      >
-        <label className="full">
-          Related lesson
-          <select
-            required
-            value={lessonId}
-            onChange={(event) => setLessonId(event.target.value)}
-          >
-            <option value="" disabled>
-              Select a lesson
-            </option>
-            {lessons.map((lesson) => (
-              <option key={lesson.id} value={lesson.id}>
-                {formatStudioDateTime(lesson.startsAt, timezone)} ·{" "}
-                {lesson.topic}
-              </option>
-            ))}
-          </select>
-          {!lessons.length && (
-            <small>Add a lesson before writing a lesson note.</small>
-          )}
-        </label>
-        <label className="full">
-          Title
-          <input
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </label>
-        <label className="full" htmlFor="note-editor">
-          Note
-        </label>
-        <div className="rich-editor full">
-          <div
-            className="rich-toolbar"
-            role="toolbar"
-            aria-label="Note formatting"
-          >
-            <button type="button" onClick={() => format("bold")}>
-              <strong>B</strong>
-            </button>
-            <button type="button" onClick={() => format("italic")}>
-              <em>I</em>
-            </button>
-            <button type="button" onClick={() => format("underline")}>
-              <u>U</u>
-            </button>
-            <button type="button" onClick={() => format("justifyLeft")}>
-              Left
-            </button>
-            <button type="button" onClick={() => format("justifyCenter")}>
-              Center
-            </button>
-            <button type="button" onClick={() => format("justifyRight")}>
-              Right
-            </button>
-            <button
-              type="button"
-              onClick={() => format("insertUnorderedList")}
-              aria-label="Bulleted list"
-            >
-              • List
-            </button>
-            <button
-              type="button"
-              onClick={() => format("insertOrderedList")}
-              aria-label="Numbered list"
-            >
-              1. List
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                const href = window.prompt("Link URL");
-                if (href) format("createLink", href);
-              }}
-            >
-              Link
-            </button>
-          </div>
-          <div
-            id="note-editor"
-            ref={editorRef}
-            className="rich-editor-body"
-            contentEditable
-            role="textbox"
-            aria-label="Note"
-            aria-multiline="true"
-            data-placeholder="Write coaching notes…"
-            onInput={(event) => setBody(event.currentTarget.innerHTML)}
-          />
-        </div>
-        <label className="check-row full">
-          <input
-            type="checkbox"
-            checked={published}
-            onChange={(e) => setPublished(e.target.checked)}
-          />
-          <span>
-            <strong>Publish to student</strong>
-            <small>Leave off to keep this as a private coach draft.</small>
-          </span>
-        </label>
-        <div className="form-actions full">
-          <button type="button" onClick={close}>
-            Cancel
-          </button>
-          <button
-            className="primary"
-            disabled={saving || !body.trim() || !lessonId}
-          >
-            {note ? "Save changes" : "Save note"}
-          </button>
-          <button
-            type="submit"
-            data-attach="true"
-            disabled={saving || !body.trim() || !lessonId}
-          >
-            Save & attach resource
-          </button>
-        </div>
-      </form>
-    </Drawer>
-  );
-}
-
 function SectionHouseholdStudent({
   student,
   onManage,

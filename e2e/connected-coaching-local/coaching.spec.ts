@@ -96,10 +96,89 @@ async function checkView(page: Page) {
   ).toEqual([]);
 }
 
+test("professional notes keep formatting and actions available on tablet and phone", async ({
+  page,
+}, info) => {
+  await prepare(page);
+  for (const width of [768, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.goto(`/coach/students/student-maya/lessons/${lessonId}`);
+    await page
+      .getByRole("button", { name: "Continue draft", exact: true })
+      .first()
+      .click();
+    const editor = page.getByRole("dialog", { name: "Edit note", exact: true });
+    const field = editor.getByRole("textbox", { name: "Note", exact: true });
+    if (width === 768) {
+      await field.fill("Objectives and tactics");
+      await field.press("Home");
+      await field.press("Shift+End");
+      await editor.getByRole("button", { name: "Bold", exact: true }).click();
+      await expect(field.locator("b, strong")).toHaveText(
+        "Objectives and tactics",
+      );
+      await editor.getByRole("button", { name: "Link", exact: true }).click();
+      await editor
+        .getByLabel("Web address", { exact: true })
+        .fill("https://example.test/rehearsal");
+      await editor
+        .getByRole("button", { name: "Insert link", exact: true })
+        .click();
+      await expect(field.locator("a")).toHaveAttribute(
+        "href",
+        "https://example.test/rehearsal",
+      );
+      await editor
+        .getByRole("button", { name: "Save draft", exact: true })
+        .click();
+      await expect(editor.getByRole("status")).toHaveText(
+        "Private draft saved",
+      );
+    }
+    await expect(field.locator("b, strong")).toHaveText(
+      "Objectives and tactics",
+    );
+    await expect(field.locator("a")).toHaveAttribute(
+      "href",
+      "https://example.test/rehearsal",
+    );
+    if (width < 500) {
+      await editor.getByRole("button", { name: "Expand", exact: true }).click();
+      const expanded = page.getByRole("dialog", { name: "Expanded editor" });
+      await expect(
+        expanded.getByRole("button", { name: "Review publication" }),
+      ).toBeInViewport();
+      expect((await expanded.boundingBox())?.width).toBe(width);
+      await page.screenshot({
+        path: info.outputPath("professional-mobile.png"),
+      });
+      await page.setViewportSize({ width, height: 490 });
+      await expect(
+        expanded.getByRole("button", { name: "Review publication" }),
+      ).toBeInViewport();
+      await expanded
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
+    } else {
+      await page.screenshot({
+        path: info.outputPath("professional-tablet.png"),
+      });
+      await editor.getByRole("button", { name: "Close", exact: true }).click();
+    }
+  }
+});
+
 test("prepare, reuse draft, complete independently, publish, assign and finish practice", async ({
   page,
-}) => {
+}, info) => {
   await prepare(page);
+  await page.evaluate(() => {
+    const key = "stage-story-studio-core-v2";
+    const snapshot = JSON.parse(localStorage.getItem(key)!);
+    snapshot.materials[0].inLibrary = true;
+    localStorage.setItem(key, JSON.stringify(snapshot));
+  });
+  await page.setViewportSize({ width: 1440, height: 980 });
   await page.goto("/coach/today");
   await page
     .getByRole("button", { name: "Open lesson workspace", exact: true })
@@ -110,13 +189,61 @@ test("prepare, reuse draft, complete independently, publish, assign and finish p
     .first()
     .click();
   const editor = page.getByRole("dialog", { name: "Edit note", exact: true });
-  await expect(editor.getByRole("combobox").first()).toHaveValue(lessonId);
+  await expect(
+    editor.getByText("Connected coaching", { exact: true }),
+  ).toBeVisible();
   await editor
     .getByRole("textbox", { name: "Note", exact: true })
     .fill("Private preparation and a clear next step.");
+  await expect(editor.getByRole("status")).toHaveText("Unsaved changes");
+  await page.screenshot({
+    path: info.outputPath("professional-desktop.png"),
+    animations: "disabled",
+  });
+  await page.evaluate(() => {
+    const write = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      if (key === "stage-story-studio-core-v2") {
+        Storage.prototype.setItem = write;
+        throw new DOMException(
+          "Synthetic interrupted save.",
+          "QuotaExceededError",
+        );
+      }
+      return write.call(this, key, value);
+    };
+  });
+  await editor.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(editor.getByRole("alert")).toContainText("Retry to recover");
+  await expect(
+    editor.getByRole("textbox", { name: "Note", exact: true }),
+  ).toHaveText("Private preparation and a clear next step.");
+  await page.screenshot({
+    path: info.outputPath("professional-retry.png"),
+    animations: "disabled",
+  });
+  await editor.getByRole("button", { name: "Retry save", exact: true }).click();
+  await expect(editor.getByRole("status")).toHaveText("Private draft saved");
+  await page.screenshot({ path: info.outputPath("professional-saved.png") });
   await editor
-    .getByRole("button", { name: "Save changes", exact: true })
+    .getByRole("button", { name: "Attach resource", exact: true })
     .click();
+  const attachments = page.getByRole("dialog", { name: "Attach Resource" });
+  await attachments
+    .getByRole("button", { name: "Choose from Library", exact: true })
+    .click();
+  await expect(
+    attachments.getByRole("button", { name: "Add New Resource", exact: true }),
+  ).toBeVisible();
+  await expect(
+    attachments.getByText("Canonical rehearsal text", { exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: info.outputPath("resource-library-selection.png"),
+    animations: "disabled",
+  });
+  await attachments.getByRole("button", { name: "Close", exact: true }).click();
+  await editor.getByRole("button", { name: "Close", exact: true }).click();
   await expect(editor).toBeHidden();
   let state = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("stage-story-studio-core-v2")!),
@@ -145,10 +272,23 @@ test("prepare, reuse draft, complete independently, publish, assign and finish p
     .getByRole("button", { name: "Continue draft", exact: true })
     .first()
     .click();
-  await editor.getByRole("checkbox", { name: /Publish to student/ }).check();
   await editor
-    .getByRole("button", { name: "Save changes", exact: true })
+    .getByRole("button", { name: "Review publication", exact: true })
     .click();
+  await expect(
+    editor.getByRole("heading", { name: "Review publication" }),
+  ).toBeVisible();
+  await expect(
+    editor
+      .getByRole("region", { name: "Review publication" })
+      .getByText("Private preparation and a clear next step."),
+  ).toBeVisible();
+  await page.screenshot({ path: info.outputPath("publication-review.png") });
+  await editor
+    .getByRole("button", { name: "Publish note", exact: true })
+    .click();
+  await expect(editor.getByRole("status")).toHaveText("Published to student");
+  await editor.getByRole("button", { name: "Close", exact: true }).click();
   await expect(editor).toBeHidden();
   await page
     .getByRole("button", { name: "Assign follow-up", exact: true })
@@ -164,6 +304,9 @@ test("prepare, reuse draft, complete independently, publish, assign and finish p
     .getByLabel(/Instructions|Details/)
     .fill("Try the two contrasting choices.");
   await practice
+    .getByRole("combobox", { name: /Activity/ })
+    .selectOption("journal");
+  await practice
     .getByRole("button", { name: /Assign practice|Assign$/ })
     .click();
   await expect(practice).toBeHidden();
@@ -178,6 +321,22 @@ test("prepare, reuse draft, complete independently, publish, assign and finish p
   await expect(
     page.getByText("Rehearse the objective", { exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Use formatting", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Your reflection", exact: true })
+    .fill("I chose to listen before responding.");
+  await page
+    .getByRole("button", { name: "Save progress", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Complete & archive", exact: true }),
+  ).toBeEnabled();
+  await page.screenshot({
+    path: info.outputPath("assignment-response.png"),
+    animations: "disabled",
+  });
   await page
     .getByRole("button", { name: "Complete & archive", exact: true })
     .click();
@@ -218,6 +377,46 @@ test("selected guardian child and private drafts stay isolated", async ({
     page.getByRole("button", { name: "Complete & archive" }),
   ).toHaveCount(0);
   await checkView(page);
+});
+
+test("actor biography saves as a draft after returning from phone preview", async ({
+  page,
+}, info) => {
+  await prepare(page);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/portal/actor-page?student=student-maya");
+  const edit = page.getByRole("button", { name: "Edit", exact: true });
+  await edit.click();
+  const editor = page.getByRole("dialog", { name: "Build actor page" });
+  const biography = editor.getByRole("textbox", { name: "Bio", exact: true });
+  const draft = "Synthetic biography about character work and rehearsal.";
+  await biography.fill(draft);
+  await editor
+    .getByRole("button", { name: "Preview page", exact: true })
+    .click();
+  await editor
+    .getByRole("button", { name: "Edit content", exact: true })
+    .click();
+  await expect(biography).toHaveValue(draft);
+  await biography.scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: info.outputPath("actor-biography.png"),
+    animations: "disabled",
+  });
+  await editor.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(editor).toBeHidden();
+  await edit.click();
+  await expect(biography).toHaveValue(draft);
+  const actor = await page.evaluate(() => {
+    const snapshot = JSON.parse(
+      localStorage.getItem("stage-story-studio-core-v2")!,
+    );
+    return snapshot.actorProfiles.find(
+      (item: { studentId: string }) => item.studentId === "student-maya",
+    );
+  });
+  expect(actor.draftStatus).toBe("draft");
+  expect(actor.status).toBe("draft");
 });
 
 test("group lesson actions stay at class scope and forged guardian context is unavailable", async ({
@@ -364,7 +563,7 @@ test("next lesson updates payment links and closes the previous lesson actions",
 
 test("My Work keeps homework, notes and scripts apart from uploaded lesson files", async ({
   page,
-}) => {
+}, info) => {
   const scriptInputWarnings: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error" && /controlled input/.test(message.text()))
@@ -386,6 +585,10 @@ test("My Work keeps homework, notes and scripts apart from uploaded lesson files
       buffer: Buffer.from("Media fixture"),
     },
   ]);
+  await page.screenshot({
+    path: info.outputPath("lesson-file-selection.png"),
+    animations: "disabled",
+  });
   await drawer
     .getByRole("button", { name: "Attach files", exact: true })
     .click();

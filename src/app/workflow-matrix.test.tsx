@@ -247,10 +247,10 @@ describe("50 start-to-finish studio workflows", () => {
         "Private coaching observation.",
       );
       await user.click(
-        within(dialog).getByRole("button", { name: "Save note" }),
+        within(dialog).getByRole("button", { name: "Save draft" }),
       );
       expect(
-        await screen.findByText("Private draft saved."),
+        await within(dialog).findByText("Private draft saved"),
       ).toBeInTheDocument();
     });
     it("10 publishes a student note", async () => {
@@ -264,12 +264,14 @@ describe("50 start-to-finish studio workflows", () => {
         within(dialog).getByLabelText("Note"),
         "Great work today.",
       );
-      await user.click(within(dialog).getByLabelText(/Publish to student/i));
       await user.click(
-        within(dialog).getByRole("button", { name: "Save note" }),
+        within(dialog).getByRole("button", { name: "Review publication" }),
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: "Publish note" }),
       );
       expect(
-        await screen.findByText("Note published to the student."),
+        await within(dialog).findByText("Published to student"),
       ).toBeInTheDocument();
     });
     it("11 changes portal access", async () => {
@@ -472,10 +474,7 @@ describe("50 start-to-finish studio workflows", () => {
         "New actor biography.",
       );
       await user.click(
-        within(dialog).getByLabelText(/Submit for coach review/i),
-      );
-      await user.click(
-        within(dialog).getByRole("button", { name: "Save draft" }),
+        within(dialog).getByRole("button", { name: "Submit for coach review" }),
       );
       expect(
         await screen.findByText(/submitted for coach review/i),

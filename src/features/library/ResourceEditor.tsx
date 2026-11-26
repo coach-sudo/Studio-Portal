@@ -69,6 +69,12 @@ export function ResourceEditor({
     ? data.materials.find((m) => (m.resourceId || m.id) === resource.id)
     : undefined;
   const initialized = useRef(false);
+  const saving = useRef(false);
+  const upload = useRef<AbortController | null>(null);
+  const [uploadState, setUploadState] = useState<{
+    phase: "upload" | "attach";
+    progress?: number;
+  }>();
   useEffect(() => {
     const loaded = detail.data || (isDemo ? demoOriginal : undefined);
     if (!initialized.current && loaded) {
@@ -89,7 +95,7 @@ export function ResourceEditor({
       sharedInstructions !== (detail.data?.sharedInstructions || ""),
   );
   const save = async () => {
-    if (busy) return;
+    if (saving.current) return;
     if (
       coach &&
       library &&
@@ -100,8 +106,10 @@ export function ResourceEditor({
       )
     )
       return;
+    saving.current = true;
     setBusy(true);
     setNotice("");
+    let fileUploaded = false;
     try {
       const nextKeywords = keywords
         .split(",")
@@ -192,15 +200,34 @@ export function ResourceEditor({
           }
         });
       } else {
-        const uploaded = file
-          ? await uploadStudioFile({
-              studioId: data.studioId,
-              studentId: library ? undefined : assignedStudent || undefined,
-              entityType: "material",
-              file,
-              visibility: noteId ? "private" : "student",
-            })
-          : undefined;
+        const controller = file ? new AbortController() : undefined;
+        if (controller) {
+          upload.current = controller;
+          setUploadState({ phase: "upload" });
+        }
+        const uploaded =
+          file && controller
+            ? await uploadStudioFile(
+                {
+                  studioId: data.studioId,
+                  studentId: library ? undefined : assignedStudent || undefined,
+                  entityType: "material",
+                  file,
+                  visibility: noteId ? "private" : "student",
+                },
+                {
+                  signal: controller.signal,
+                  onProgress: (loaded, total) =>
+                    setUploadState({
+                      phase: "upload",
+                      progress: Math.round((100 * loaded) / total),
+                    }),
+                },
+              )
+            : undefined;
+        upload.current = null;
+        fileUploaded = !!uploaded;
+        if (fileUploaded) setUploadState({ phase: "attach" });
         await resourceCommand(
           resource ? "resource_update" : "resource_create",
           {
@@ -232,11 +259,18 @@ export function ResourceEditor({
       onSaved();
     } catch (error) {
       setNotice(
-        error instanceof Error
-          ? error.message
-          : "The resource could not be saved.",
+        upload.current?.signal.aborted
+          ? "Upload cancelled. Your file and resource details are still here."
+          : fileUploaded
+            ? "File uploaded. The resource save could not be confirmed. Your details are still here."
+            : error instanceof Error
+              ? error.message
+              : "The resource could not be saved.",
       );
     } finally {
+      upload.current = null;
+      setUploadState(undefined);
+      saving.current = false;
       setBusy(false);
     }
   };
@@ -438,7 +472,7 @@ export function ResourceEditor({
             />
           </label>
         )}
-        {coach && (studentId || !resource) && (
+        {coach && !noteId && (studentId || !resource) && (
           <label className="check-row full">
             <input
               type="checkbox"
@@ -498,6 +532,31 @@ export function ResourceEditor({
           <p className="full" role="alert">
             {notice}
           </p>
+        )}
+        {uploadState && (
+          <div className="full">
+            <p role="status">
+              {uploadState.phase === "attach"
+                ? "File uploaded. Saving the resource and its links…"
+                : "Uploading the file…"}
+            </p>
+            {uploadState.phase === "upload" && (
+              <>
+                <progress
+                  aria-label="File upload"
+                  max={100}
+                  value={uploadState.progress}
+                />
+                <button
+                  type="button"
+                  disabled={!busy}
+                  onClick={() => upload.current?.abort()}
+                >
+                  Cancel upload
+                </button>
+              </>
+            )}
+          </div>
         )}
         <div className="form-actions full">
           <button

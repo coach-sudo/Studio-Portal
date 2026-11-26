@@ -74,9 +74,8 @@ test("@journey @a11y Journey 09: student submits an actor edit, coach publishes 
   await student.page.goto("/portal/actor-page");
   await student.page.getByRole("button", { name: "Edit" }).click();
   await student.page.getByLabel("Display name").fill(updatedName);
-  await student.page.getByLabel("Submit for coach review").check();
   await student.page
-    .getByRole("button", { name: "Save draft", exact: true })
+    .getByRole("button", { name: "Submit for coach review", exact: true })
     .click();
   await expect(student.page.getByRole("status")).toContainText(
     "submitted for coach review",

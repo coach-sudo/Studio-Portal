@@ -1,4 +1,5 @@
 import { actorPortfolioSchema } from "../../../src/domain/actorLayout";
+import { z } from "zod";
 import { AppError, json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
@@ -153,31 +154,64 @@ export async function handleWorkCommands(
       body = String(input.payload.body || "").trim();
     if (!lessonId || !studentId || !title || !body)
       throw new Error("VALIDATION_FAILED");
+    const composerNoteId =
+      input.payload.composerNoteId === undefined
+        ? undefined
+        : z.uuid().parse(input.payload.composerNoteId);
     const status = input.payload.status === "draft" ? "draft" : "published";
+    const content = {
+      lesson_id: lessonId,
+      student_id: studentId,
+      title,
+      body,
+      body_html: String(input.payload.bodyHtml || body),
+      status,
+    };
     const { data, error } = await db
       .from("notes")
       .insert({
-        lesson_id: lessonId,
-        student_id: studentId,
-        title,
-        body,
-        body_html: String(input.payload.bodyHtml || body),
+        ...(composerNoteId ? { id: composerNoteId } : {}),
+        ...content,
         rich_content: input.payload.richContent || { version: 1, blocks: [] },
         category: String(input.payload.category || "lesson_note"),
         tags: input.payload.tags || [],
         pinned: Boolean(input.payload.pinned),
-        status,
         published_at: status === "published" ? new Date().toISOString() : null,
       })
       .select()
       .single();
+    if (composerNoteId && error?.code === "23505") {
+      const { data: retained, error: lookupError } = await db
+        .from("notes")
+        .select("*")
+        .eq("id", composerNoteId)
+        .eq("student_id", studentId)
+        .eq("lesson_id", lessonId)
+        .maybeSingle();
+      if (lookupError) throw lookupError;
+      if (
+        !retained ||
+        retained.version !== 1 ||
+        retained.title !== title ||
+        retained.body !== body ||
+        retained.body_html !== content.body_html ||
+        retained.status !== status
+      )
+        throw new Error("VERSION_CONFLICT:0");
+      return json({
+        resource: retained,
+        recommendations: [],
+        queuedSideEffects: [],
+      });
+    }
     if (error) throw error;
-    await serviceClient()
-      .from("recommendations")
-      .update({ status: "resolved", updated_at: new Date().toISOString() })
-      .eq("entity_type", "lesson")
-      .eq("entity_id", lessonId)
-      .in("reason_code", ["lesson_note_missing", "lesson_note_due_48h"]);
+    if (status === "published")
+      await serviceClient()
+        .from("recommendations")
+        .update({ status: "resolved", updated_at: new Date().toISOString() })
+        .eq("entity_type", "lesson")
+        .eq("entity_id", lessonId)
+        .in("reason_code", ["lesson_note_missing", "lesson_note_due_48h"]);
     return json({
       resource: data,
       recommendations: [],
@@ -226,6 +260,21 @@ export async function handleWorkCommands(
       updated_at: new Date().toISOString(),
     };
     if (!changes.title || !changes.body) throw new Error("VALIDATION_FAILED");
+    if (
+      input.payload.composerNoteId === before.id &&
+      before.version === changes.version &&
+      before.student_id === input.payload.studentId &&
+      before.lesson_id === input.payload.lessonId &&
+      before.title === changes.title &&
+      before.body === changes.body &&
+      before.body_html === changes.body_html &&
+      before.status === changes.status
+    )
+      return json({
+        resource: before,
+        recommendations: [],
+        queuedSideEffects: [],
+      });
     const { data, error } = await serviceClient()
       .from("notes")
       .update(changes)

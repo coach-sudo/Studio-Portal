@@ -55,7 +55,6 @@ export function ActorBuilder({
     primaryHeadshotMaterialId:
       profile.draftContent?.primaryHeadshotMaterialId || "",
   });
-  const [submit, setSubmit] = useState(false);
   const [editorView, setEditorView] = useState<"edit" | "preview">("edit");
   const layout = useRef<HTMLDivElement>(null);
   const editScroll = useRef(0);
@@ -87,7 +86,14 @@ export function ActorBuilder({
     setBusy(true);
     setError("");
     try {
-      await onSave(name, bio, portfolio, submit);
+      const submitter = (event.nativeEvent as SubmitEvent).submitter;
+      await onSave(
+        name,
+        bio,
+        portfolio,
+        submitter?.getAttribute("value") === "review",
+      );
+      initial.current = JSON.stringify({ name, bio, portfolio });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Draft could not be saved.");
     } finally {
@@ -403,15 +409,9 @@ export function ActorBuilder({
               onChange={(event) => setBio(event.target.value)}
             />
           </label>
-          <label className="check-row full">
-            <input
-              type="checkbox"
-              checked={submit}
-              onChange={(event) => setSubmit(event.target.checked)}
-            />
-            Submit for coach review
-            <small>Your coach must approve changes before publication.</small>
-          </label>
+          <p className="full">
+            Your coach must approve changes before publication.
+          </p>
           <label className="full">
             Résumé / credits
             <WritingArea
@@ -437,6 +437,9 @@ export function ActorBuilder({
             </button>
             <button className="primary" disabled={busy} aria-busy={busy}>
               {busy ? "Saving…" : "Save draft"}
+            </button>
+            <button type="submit" value="review" disabled={busy}>
+              Submit for coach review
             </button>
           </div>
         </form>
