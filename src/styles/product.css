@@ -108,14 +108,15 @@ textarea {
     var(--forest),
     var(--primary-hover-tint, #000) 18%
   );
-  box-shadow: none;
+  box-shadow: inset 3px 0 var(--forest);
   color: var(--on-forest);
   font-weight: 600;
 }
 .sidebar nav a:hover,
-.student-shell > aside nav a:hover {
-  background: var(--app-surface-soft);
-  color: var(--ink);
+.student-shell > aside nav a:hover,
+.student-shell > aside nav > button:hover {
+  background: var(--primary-hover);
+  color: var(--on-forest);
 }
 .sidebar nav a svg,
 .student-shell > aside nav a svg {
@@ -700,6 +701,7 @@ input[type="radio"] {
   border-radius: var(--radius-panel);
   box-shadow: var(--app-shadow-card);
   background: var(--app-surface);
+  color: var(--ink);
   padding: 28px;
 }
 .table-list > article,
@@ -1545,12 +1547,8 @@ input[type="radio"] {
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  color: var(--muted);
+  color: var(--on-forest);
   text-align: left;
-}
-.student-shell > aside nav > button:hover {
-  background: var(--app-surface-soft);
-  color: var(--ink);
 }
 .current-script-card > .button-link {
   margin: 12px 20px;
@@ -1625,10 +1623,6 @@ input[type="radio"] {
 :is(.page, .student-page, .workflow-dialog)
   :where(button, a.button-link):hover:not(:disabled) {
   border-color: var(--app-border-strong);
-}
-.sidebar nav a.active,
-.student-shell > aside nav a.active {
-  box-shadow: inset 3px 0 var(--forest);
 }
 .section > p,
 .workflow-content > p {

@@ -91,7 +91,6 @@
   color: var(--color-danger);
 }
 :root[data-portal-theme="dark"] .shell-mark,
-:root[data-portal-theme="dark"] .student-shell > aside nav a.active,
 :root[data-portal-theme="dark"] .mobile-nav .active {
   color: #bfd4bc;
 }
