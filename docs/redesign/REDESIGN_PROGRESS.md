@@ -25,6 +25,8 @@ The single production deployment `6b089767d3f364a950eac72e` is published and loc
 
 ## Release C · Writing and interaction pilots
 
+On November 26, 2026, the owner reviewed and approved the visual appearance and interaction direction of the pilots at `4362852`. This approval covers unchanged pilots. Review new visuals only where later work materially changes the approved experience. Assignment access, draft recovery, device behavior and release readiness have separate technical gates.
+
 Release C branches from the approved Release B tree. The coach lesson composer reuses the current note format and the shared overlay. The plain-text `WritingArea` serves the Actor biography and simple fields. Journal responses can switch to the shared rich editor and retain their plain-text response alongside formatted content in the existing response record. The Professional canvas adds exact lesson context, focus mode, a full-screen phone layout, explicit private save and publication review, and access to the existing resource picker.
 
 Confirmed lesson draft saves use the existing note record. An interrupted create retries against the same note ID. Version conflicts keep the writer's text in view and require reconciliation with the current note. Draft saves leave lesson status, credits and recommendations alone. The publication review shows the intended student, lesson and attached resources before the separate confirm action.

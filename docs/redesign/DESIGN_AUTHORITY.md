@@ -8,6 +8,8 @@ Apply current owner decisions and authorization, privacy, security, and financia
 
 The owner-supplied design packages remain the authoritative copies. [Implementation decisions](DESIGN_DECISIONS.md) · [Current release progress](REDESIGN_PROGRESS.md)
 
+The original `CoachD_Audited_Lookbook_v3_1_EDITOR_UPDATED.zip` and `CoachD_Actor_Page_and_Buttons_Lookbook_v4_AUDITED.zip` are retained in the private Coach'D design source archive. The archived copies match the supplied ZIPs byte for byte. Extracted references and application screenshots serve as working evidence.
+
 ## Release B authority
 
 The owner authorized shared-foundation implementation after the independent privacy release. The audited v3.1 approved Coach references govern the serif hierarchy, forest navigation, quiet surfaces and spacing. The audited v4 control contract governs touch targets, word wrapping, pending states, focus, and overlay behavior. The existing Student and Household routes provide the pilot content and permissions. This milestone keeps the existing Today content and operational controls while bringing Up next and today's lesson list together at wide widths.
