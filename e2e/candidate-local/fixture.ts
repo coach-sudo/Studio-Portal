@@ -15,7 +15,12 @@ export type FixtureRole = "coach" | "student" | "guardian" | "unrelated";
 export async function installFixture(
   context: BrowserContext,
   role: FixtureRole,
-  names: { student?: string; guardian?: string; relationship?: string } = {},
+  names: {
+    student?: string;
+    guardian?: string;
+    relationship?: string;
+    coach?: string;
+  } = {},
 ) {
   const identity = role === "student" ? ids.learner : ids[role];
   const user = {
@@ -255,7 +260,7 @@ export async function installFixture(
           name: "Candidate Studio",
           slug: "candidate-local",
           timezone: "America/New_York",
-          settings: {},
+          settings: names.coach ? { coachName: names.coach } : {},
         },
       ];
     if (table === "linked_contacts")

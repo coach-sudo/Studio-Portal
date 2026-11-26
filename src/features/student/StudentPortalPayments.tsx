@@ -716,6 +716,7 @@ export function Payments({
               <button
                 className="primary"
                 disabled={checkoutBusy || !renewalMode}
+                aria-busy={checkoutBusy}
                 onClick={() => void purchase(purchaseDefinition.id)}
               >
                 {checkoutBusy

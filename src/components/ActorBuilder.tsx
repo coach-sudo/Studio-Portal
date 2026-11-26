@@ -435,7 +435,7 @@ export function ActorBuilder({
             <button type="button" disabled={busy} onClick={close}>
               Cancel
             </button>
-            <button className="primary" disabled={busy}>
+            <button className="primary" disabled={busy} aria-busy={busy}>
               {busy ? "Saving…" : "Save draft"}
             </button>
           </div>

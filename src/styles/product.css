@@ -1,8 +1,9 @@
 /* Product presentation, layered over feature styles without changing workflow rules. */
 body {
   background: var(--app-canvas);
+  font-family: var(--font-body);
   font-size: var(--text-body);
-  line-height: 1.55;
+  line-height: var(--leading-body);
 }
 button,
 input,
@@ -12,7 +13,9 @@ textarea {
 }
 button:disabled {
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 1;
+  color: var(--control-disabled-text);
+  background: var(--control-disabled-fill);
 }
 button,
 a,
@@ -48,8 +51,8 @@ textarea {
 .student-shell > aside {
   width: var(--sidebar-width);
   padding: 28px 16px 18px;
-  background: var(--app-surface);
-  color: var(--ink);
+  background: var(--forest);
+  color: var(--on-forest);
   border-right: 1px solid var(--app-border);
   overflow-y: auto;
   overscroll-behavior-y: contain;
@@ -69,8 +72,11 @@ textarea {
   padding: 0 6px;
 }
 .shell-brand .wordmark {
-  font-size: 21px;
-  letter-spacing: 0.035em;
+  font-family: var(--font-heading);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+  text-transform: none;
 }
 .shell-mark {
   width: 38px;
@@ -93,25 +99,43 @@ textarea {
   border-radius: 10px;
   font-size: 14px;
   padding: 0 14px;
-  color: var(--muted);
+  color: var(--on-forest);
 }
 .sidebar nav a.active,
 .student-shell > aside nav a.active {
-  background: var(--app-surface-soft);
-  box-shadow: none;
-  color: var(--brand-text);
+  background: color-mix(
+    in srgb,
+    var(--forest),
+    var(--primary-hover-tint, #000) 18%
+  );
+  box-shadow: inset 3px 0 var(--forest);
+  color: var(--on-forest);
   font-weight: 600;
 }
 .sidebar nav a:hover,
-.student-shell > aside nav a:hover {
-  background: var(--app-surface-soft);
-  color: var(--ink);
+.student-shell > aside nav a:hover,
+.student-shell > aside nav > button:hover {
+  background: var(--primary-hover);
+  color: var(--on-forest);
 }
 .sidebar nav a svg,
 .student-shell > aside nav a svg {
   width: 19px;
   height: 19px;
   stroke-width: 1.7;
+}
+.sidebar :is(.shell-search, .session-button),
+.student-shell > aside :is(.shell-search, .session-button) {
+  color: var(--on-forest);
+  background: color-mix(
+    in srgb,
+    var(--forest),
+    var(--primary-hover-tint, #000) 10%
+  );
+}
+.sidebar :is(.shell-search kbd, .identity small),
+.student-shell > aside :is(.shell-search kbd, .identity small) {
+  color: var(--on-forest);
 }
 .sidebar nav a:last-child {
   margin-top: 14px;
@@ -135,10 +159,11 @@ textarea {
 }
 .sidebar-collapse {
   border-color: var(--app-border);
-  color: var(--muted);
+  color: var(--on-forest);
 }
 .sidebar-collapse:hover {
   background: var(--app-surface-soft);
+  color: var(--ink);
 }
 .shell-search {
   margin-top: 28px;
@@ -198,10 +223,11 @@ textarea {
 }
 .page-header h1,
 .student-header h1 {
+  font-family: var(--font-heading);
   font-size: var(--text-title);
   line-height: 1.15;
   letter-spacing: -0.04em;
-  font-weight: 600;
+  font-weight: 400;
 }
 .page-header p,
 .student-header p {
@@ -313,10 +339,11 @@ textarea {
 }
 .section h2,
 .coach-panel h2 {
-  font-family: inherit;
-  font-size: 22px;
-  font-weight: 600;
-  letter-spacing: -0.025em;
+  font-family: var(--font-heading);
+  font-size: var(--text-section);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: var(--leading-heading);
 }
 .section.marked h2::after {
   display: none;
@@ -394,7 +421,8 @@ button.danger {
 .workflow-form label,
 .settings-form label,
 .credential-form label,
-.class-assignment-form label {
+.class-assignment-form label,
+.actor-builder-layout label {
   color: var(--ink);
   font-size: 13px;
   font-weight: 500;
@@ -415,7 +443,7 @@ button.danger {
 .settings-form textarea {
   min-height: var(--control-md);
   background: var(--app-surface);
-  border: 1px solid var(--app-border-strong);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius-control);
   font-size: 15px;
   color: var(--ink);
@@ -445,6 +473,9 @@ input[type="radio"] {
   line-height: 1.4;
   font-weight: 500;
   text-transform: none;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 .status.good {
   background: var(--surface-success);
@@ -670,6 +701,7 @@ input[type="radio"] {
   border-radius: var(--radius-panel);
   box-shadow: var(--app-shadow-card);
   background: var(--app-surface);
+  color: var(--ink);
   padding: 28px;
 }
 .table-list > article,
@@ -942,6 +974,7 @@ input[type="radio"] {
   border-radius: var(--radius-feature);
   box-shadow: var(--app-shadow-float);
   background: var(--app-surface);
+  color: var(--ink);
   overflow: auto;
 }
 .workflow-dialog > header {
@@ -950,10 +983,11 @@ input[type="radio"] {
   border-bottom: 1px solid var(--app-border);
 }
 .workflow-dialog > header h2 {
-  font-family: inherit;
+  font-family: var(--font-heading);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: -0.025em;
+  color: var(--ink);
 }
 .workflow-dialog > header p {
   font-size: 14px;
@@ -1513,12 +1547,8 @@ input[type="radio"] {
   border: 0;
   border-radius: var(--radius-control);
   background: transparent;
-  color: var(--muted);
+  color: var(--on-forest);
   text-align: left;
-}
-.student-shell > aside nav > button:hover {
-  background: var(--app-surface-soft);
-  color: var(--ink);
 }
 .current-script-card > .button-link {
   margin: 12px 20px;
@@ -1593,10 +1623,6 @@ input[type="radio"] {
 :is(.page, .student-page, .workflow-dialog)
   :where(button, a.button-link):hover:not(:disabled) {
   border-color: var(--app-border-strong);
-}
-.sidebar nav a.active,
-.student-shell > aside nav a.active {
-  box-shadow: inset 3px 0 var(--forest);
 }
 .section > p,
 .workflow-content > p {
@@ -1723,4 +1749,145 @@ input[type="radio"] {
   border: 1px solid var(--line);
   border-radius: 10px;
   text-align: left;
+}
+
+/* Shared interaction and record foundations used by the Release B pilots. */
+:is(.app-shell, .student-shell, .workflow-dialog) button {
+  transition:
+    background-color var(--motion-fast),
+    border-color var(--motion-fast);
+}
+:is(.app-shell, .student-shell, .workflow-dialog) button[aria-busy="true"] {
+  cursor: wait;
+}
+:is(.app-shell, .student-shell, .workflow-dialog)
+  button[aria-busy="true"]::after {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-inline-start: 0.6em;
+  vertical-align: -0.1em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: action-pending 0.8s linear infinite;
+}
+@keyframes action-pending {
+  to {
+    transform: rotate(360deg);
+  }
+}
+:is(.workflow-dialog, .student-shell) :is(input, select, textarea):disabled {
+  color: var(--control-disabled-text);
+  background: var(--control-disabled-fill);
+}
+:is(.workflow-dialog, .student-shell)
+  :is(input, select, textarea)[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  outline-color: var(--color-danger);
+}
+:is(.table-list, .workflow-list) > :is(article, .clickable-row) {
+  row-gap: var(--space-3);
+}
+:is(.table-list, .workflow-list)
+  > :is(article, .clickable-row)
+  :is(strong, small) {
+  text-overflow: clip;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+:is(.table-list, .workflow-list) > :is(article, .clickable-row):last-child {
+  border-bottom: 0;
+}
+.page-today .coaching-next {
+  padding: var(--space-6);
+  border-radius: var(--radius-card);
+  background: var(--app-surface-soft);
+  border-inline-start: 3px solid var(--forest);
+}
+.page-today .coaching-next h3 {
+  font: 400 clamp(24px, 2.6vw, 32px)/1.2 var(--font-heading);
+  margin-top: 0;
+}
+.page-today .today-lesson-row {
+  padding-block: var(--space-4);
+}
+.page-today .today-lesson-row.featured {
+  background: var(--surface-warning);
+  border-radius: var(--radius-control);
+  padding-inline: var(--space-4);
+}
+.workflow-dialog .actor-section-order {
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-card);
+  padding: var(--space-4);
+  margin: 0;
+}
+.workflow-dialog .actor-section-order > div {
+  border: 0;
+  border-bottom: 1px solid var(--app-border);
+  padding: var(--space-2) 0;
+}
+.actor-builder-viewport-controls button,
+.actor-builder-mobile-tabs button {
+  color: var(--ink);
+  background: var(--app-surface-soft);
+}
+.actor-builder-viewport-controls button[aria-pressed="true"] {
+  color: var(--on-forest);
+  background: var(--forest);
+  border-color: var(--forest);
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.app-shell, .student-shell, .workflow-dialog) *,
+  :is(.app-shell, .student-shell, .workflow-dialog) *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.today-focus-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--app-page-gap);
+  align-items: start;
+  margin-block-end: var(--space-6);
+}
+.today-focus-grid > .section {
+  margin: 0;
+}
+.today-focus-grid .coaching-next {
+  padding: var(--space-4);
+}
+@media (max-width: 1100px) {
+  .today-focus-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+:is(.app-shell, .student-shell, .workflow-dialog)
+  button:disabled:not([aria-busy="true"]) {
+  color: var(--control-disabled-text);
+  background: var(--control-disabled-fill);
+  border-color: transparent;
+}
+
+.today-focus-grid .today-lesson-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+}
+.today-focus-grid .today-lesson-row > .row-actions {
+  grid-column: 2 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.today-focus-grid .today-lesson-row > .row-actions > button {
+  flex: 1 1 7.5rem;
+  min-width: min(7.5rem, 100%);
+  overflow-wrap: normal;
+  word-break: normal;
 }
