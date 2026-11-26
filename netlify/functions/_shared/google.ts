@@ -1,3 +1,6 @@
+import { calendarOAuthConfig, calendarOAuthStudio } from "./calendar-oauth";
+import { activeCalendarRoles } from "./calendar-roles";
+import { serviceClient } from "./supabase";
 import { z } from "zod";
 
 const googleErrorSchema = z
@@ -99,7 +102,7 @@ function availabilityError(response: Response, reason?: string) {
       ? Number(retryAfter) * 1000
       : Math.max(0, Date.parse(retryAfter) - Date.now()) || 0;
   return new GoogleAvailabilityError(
-    "Google availability could not be verified.",
+    "CALENDAR_UNAVAILABLE: Google availability could not be verified.",
     throttled,
     throttled ||
       response.status >= 500 ||
@@ -115,14 +118,33 @@ export class GoogleAuthorizationError extends Error {
   }
 }
 
-export async function googleAccessToken(signal?: AbortSignal) {
+export async function googleAccessToken(
+  signal?: AbortSignal,
+  lane: "calendar" | "gmail" = "calendar",
+) {
   const clientId =
       Netlify.env.get("GOOGLE_CLIENT_ID") ||
       Netlify.env.get("GOOGLE_OAUTH_CLIENT_ID"),
     clientSecret =
       Netlify.env.get("GOOGLE_CLIENT_SECRET") ||
-      Netlify.env.get("GOOGLE_OAUTH_CLIENT_SECRET"),
-    refreshToken = Netlify.env.get("GOOGLE_REFRESH_TOKEN");
+      Netlify.env.get("GOOGLE_OAUTH_CLIENT_SECRET");
+  let refreshToken = Netlify.env.get("GOOGLE_REFRESH_TOKEN");
+  const oauth = lane === "calendar" ? calendarOAuthConfig() : null;
+  if (oauth) {
+    const db = serviceClient();
+    const studio = await calendarOAuthStudio(db);
+    if (!studio) throw new GoogleAuthorizationError("configuration");
+    const stored = await db
+      .rpc("calendar_oauth_refresh", {
+        p_studio: studio,
+        p_email: oauth.account,
+      })
+      .abortSignal(signal ?? AbortSignal.timeout(3000));
+    if (stored.error)
+      throw new Error("Calendar authorization could not be read.");
+    if (typeof stored.data === "string" && stored.data)
+      refreshToken = stored.data;
+  }
   if (!clientId || !clientSecret || !refreshToken)
     throw new GoogleAuthorizationError("configuration");
   const response = await fetch("https://oauth2.googleapis.com/token", {
@@ -140,12 +162,9 @@ export async function googleAccessToken(signal?: AbortSignal) {
     throw availabilityError(response);
   const body = parseGooglePayload(tokenResponseSchema, await response.json());
   if (!response.ok || !body.access_token) {
-    if (
-      body.error === "invalid_grant" ||
-      body.error === "invalid_client" ||
-      body.error === "unauthorized_client" ||
-      response.status === 401
-    )
+    if (body.error === "invalid_client" || body.error === "unauthorized_client")
+      throw new GoogleAuthorizationError("configuration");
+    if (body.error === "invalid_grant" || response.status === 401)
       throw new GoogleAuthorizationError("authorization");
     throw new Error("Google token refresh failed.");
   }
@@ -216,12 +235,12 @@ export async function googleFreeBusy(
   timeMax: string,
   options?: { signal: AbortSignal; requireComplete: true },
 ) {
-  const calendarId = Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary";
+  const { availability } = await activeCalendarRoles();
   const response = await fetch(
     "https://www.googleapis.com/calendar/v3/freeBusy",
     {
       method: "POST",
-      signal: options?.signal,
+      signal: options?.signal ?? AbortSignal.timeout(5000),
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -230,14 +249,14 @@ export async function googleFreeBusy(
         timeMin,
         timeMax,
         timeZone: "UTC",
-        items: [{ id: calendarId }],
+        items: availability.map((id) => ({ id })),
       }),
     },
   );
-  if (options && (response.status === 429 || response.status >= 500))
+  if (response.status === 429 || response.status >= 500)
     throw availabilityError(response);
   const raw: unknown = await response.json();
-  if (options && !response.ok) {
+  if (!response.ok) {
     const failure = z
       .object({
         error: z
@@ -252,21 +271,24 @@ export async function googleFreeBusy(
     throw availabilityError(response, failure.data?.error?.errors?.[0]?.reason);
   }
   const payload = parseGooglePayload(freeBusyResponseSchema, raw);
-  if (options) {
-    const calendars = payload.calendars ?? {};
-    const entries = Object.values(calendars);
-    // Google can resolve the primary alias to the account's actual calendar ID.
+  const calendars = payload.calendars ?? {};
+  const entries = Object.values(calendars);
+  if (
+    payload.error ||
+    Date.parse(payload.timeMin ?? "") !== Date.parse(timeMin) ||
+    Date.parse(payload.timeMax ?? "") !== Date.parse(timeMax)
+  )
+    throw availabilityError(response);
+  return availability.flatMap((id) => {
+    // An unmanaged primary alias can be normalized to its actual calendar ID.
     const calendar =
-      calendars[calendarId] ??
-      (calendarId === "primary" && entries.length === 1
+      calendars[id] ??
+      (id === "primary" && availability.length === 1 && entries.length === 1
         ? entries[0]
         : undefined);
     if (calendar?.errors?.length)
       throw availabilityError(response, calendar.errors[0].reason);
     if (
-      payload.error ||
-      Date.parse(payload.timeMin ?? "") !== Date.parse(timeMin) ||
-      Date.parse(payload.timeMax ?? "") !== Date.parse(timeMax) ||
       !calendar?.busy ||
       calendar.busy.some(
         ({ start, end }) =>
@@ -274,17 +296,10 @@ export async function googleFreeBusy(
           !providerInstant.safeParse(end).success ||
           !(Date.parse(start) < Date.parse(end)),
       )
-    ) {
+    )
       throw availabilityError(response);
-    }
     return calendar.busy;
-  }
-  const calendarError = payload.calendars?.[calendarId]?.errors?.[0]?.reason;
-  if (!response.ok || calendarError)
-    throw new Error(
-      `CALENDAR_UNAVAILABLE (${response.status}: ${payload.error?.message || calendarError || "provider error"})`,
-    );
-  return payload.calendars?.[calendarId]?.busy ?? [];
+  });
 }
 
 export interface GoogleCalendarConflict {
@@ -299,6 +314,18 @@ export async function googleCalendarConflicts(
   timeMax: string,
   signal?: AbortSignal,
 ) {
+  if (calendarOAuthConfig()) {
+    const busy = await googleFreeBusy(token, timeMin, timeMax, {
+      signal: signal ?? AbortSignal.timeout(5000),
+      requireComplete: true,
+    });
+    return busy.map(({ start, end }) => ({
+      id: `busy:${start}:${end}`,
+      summary: "Busy calendar time",
+      start,
+      end,
+    }));
+  }
   const calendarId = Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary";
   const query = new URLSearchParams({
     timeMin,

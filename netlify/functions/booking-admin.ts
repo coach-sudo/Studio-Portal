@@ -1,3 +1,4 @@
+import { calendarOAuthConfig } from "./_shared/calendar-oauth";
 import { setTimeout as delay } from "node:timers/promises";
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
@@ -109,7 +110,7 @@ async function readGoogleAvailability<T>(
 }
 
 async function googleObservation(windows: BookingWindow[], recurring: boolean) {
-  if (!Netlify.env.get("GOOGLE_REFRESH_TOKEN"))
+  if (!(Netlify.env.get("GOOGLE_REFRESH_TOKEN") || calendarOAuthConfig()))
     return { conflicts: [], checked: false };
   const remaining = new AbortController();
   const deadline = AbortSignal.timeout(availabilityBudgetMs);
@@ -371,10 +372,13 @@ export default async (request: Request, context: Context) => {
       else if (
         !recurring &&
         body.payload.allow_conflict &&
-        Netlify.env.get("GOOGLE_REFRESH_TOKEN")
+        (Netlify.env.get("GOOGLE_REFRESH_TOKEN") || calendarOAuthConfig())
       )
         external = "overridden";
-      else if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
+      else if (
+        Netlify.env.get("GOOGLE_REFRESH_TOKEN") ||
+        calendarOAuthConfig()
+      ) {
         const { conflicts } = await googleObservation(windows, recurring);
         if (conflicts.length && recurring) {
           const dates = windows

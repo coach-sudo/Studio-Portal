@@ -1,3 +1,4 @@
+import { activeCalendarRoles } from "./_shared/calendar-roles";
 import {
   workerEnabled,
   disabledWorkerResponse,
@@ -15,6 +16,7 @@ export default async () => {
   });
   if (error) throw error;
   if (!items?.length) return Response.json({ ok: true, processed: 0 });
+  const { outgoing } = await activeCalendarRoles();
   let projected = 0;
   for (const item of items) {
     if (!workerEnabled("calendar")) break;
@@ -23,7 +25,7 @@ export default async () => {
         db,
         item,
         () => googleAccessToken(AbortSignal.timeout(3500)),
-        Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary",
+        outgoing,
       )
     )
       projected++;

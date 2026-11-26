@@ -73,3 +73,85 @@ export function retryHealthIssue(
     },
   );
 }
+
+export type CalendarConflictReview =
+  | {
+      state: "comparison";
+      historical: boolean;
+      canConfirm: boolean;
+      timingMatches: boolean;
+      lesson: { start: string; end: string };
+      event: { start: string; end: string };
+      eventUrl: string | null;
+      version: number;
+      etag: string;
+    }
+  | {
+      state:
+        | "reviewed"
+        | "changed"
+        | "unavailable"
+        | "configuration"
+        | "authorization"
+        | "permission"
+        | "throttled"
+        | "event_missing"
+        | "ambiguous"
+        | "provider_unavailable";
+    };
+
+export function reviewCalendarConflict(
+  studio: string,
+  issue: string,
+  confirm?: { version: number; etag: string },
+) {
+  return requestHealth<CalendarConflictReview>(studio, "calendar-review", {
+    body: { issue, confirm },
+    signal: AbortSignal.timeout(12_000),
+  });
+}
+
+export async function beginCalendarAuthorization(studio: string) {
+  const response = await requestHealth<{ authorize: string }>(
+    studio,
+    "calendar-oauth",
+    {
+      signal: AbortSignal.timeout(12000),
+    },
+  );
+  const authorize = new URL(response.authorize);
+  if (
+    authorize.origin !== "https://accounts.google.com" ||
+    authorize.pathname !== "/o/oauth2/v2/auth"
+  )
+    throw new Error("Calendar authorization is unavailable.");
+  window.location.assign(authorize.href);
+}
+
+export type CalendarRoleSelection = {
+  outgoing: string;
+  availability: string[];
+  incoming: string[];
+};
+export type CalendarRoleOptions = {
+  roles: CalendarRoleSelection;
+  calendars: { id: string; label: string; write: boolean; read: boolean }[];
+};
+export function manageCalendarRoleSelection(
+  studio: string,
+  selection?: CalendarRoleSelection,
+) {
+  return requestHealth<CalendarRoleOptions>(studio, "calendar-roles", {
+    body: selection ?? {},
+    signal: AbortSignal.timeout(12000),
+  });
+}
+
+export function checkMissedCalendarChanges(studio: string, calendar: string) {
+  return requestHealth<
+    { state: "held" } | { state: "checked"; imported: number; review: number }
+  >(studio, "calendar-catch-up", {
+    body: { calendar },
+    signal: AbortSignal.timeout(24000),
+  });
+}
