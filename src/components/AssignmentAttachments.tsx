@@ -257,17 +257,19 @@ function Files({
                 Attach up to 12 files, 50 MB each. Completing the assignment
                 submits them to your coach and authorized household members.
               </p>
-              <label htmlFor={field}>Choose an assignment file</label>
-              <input
-                id={field}
-                type="file"
-                accept={studioFileAccept}
-                disabled={!!action || disabled}
-                onChange={(event) => {
-                  choose(event.currentTarget.files?.[0]);
-                  event.currentTarget.value = "";
-                }}
-              />
+              <label htmlFor={field}>
+                Choose an assignment file
+                <input
+                  id={field}
+                  type="file"
+                  accept={studioFileAccept}
+                  disabled={!!action || disabled}
+                  onChange={(event) => {
+                    choose(event.currentTarget.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
               {file && (
                 <div className="form-actions">
                   <span>{file.name}</span>

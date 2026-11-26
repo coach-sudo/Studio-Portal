@@ -1,5 +1,9 @@
 import { strict as assert } from "node:assert";
 import { createHash, randomUUID } from "node:crypto";
+import { Blob, Buffer } from "node:buffer";
+import { log } from "node:console";
+import process from "node:process";
+import { URL } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 
 const origin = new URL(
@@ -163,6 +167,8 @@ try {
         user_id: id("work-guardian"),
         relationship: "guardian",
         can_view_work: true,
+        can_view_schedule: false,
+        can_view_finance: false,
       },
       {
         student_id: learnerId,
@@ -251,7 +257,7 @@ try {
   const publicLink = anonymous.storage.from(bucket).getPublicUrl(objectPath)
     .data.publicUrl;
   assert.equal(
-    (await fetch(publicLink)).ok,
+    (await globalThis.fetch(publicLink)).ok,
     false,
     "Public Storage route must not serve the object",
   );
@@ -269,7 +275,7 @@ try {
     false,
     "Revoked household after completion",
   );
-  console.log(
+  log(
     "Assignment Storage passed actual upload, retry, unlink, completion, role isolation and revocation.",
   );
 } finally {
