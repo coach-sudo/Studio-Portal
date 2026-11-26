@@ -251,47 +251,141 @@ export function TodayView({
   return (
     <>
       <JoinLessonBanner lessons={data.lessons} />
-      <Section title="Up next" marked>
-        {upNext ? (
-          <div className="coaching-next">
-            <div>
-              <h3>
-                {studentName(data, upNext.studentId)} · {upNext.topic}
-              </h3>
-              <p>
-                {formatStudioDateTime(upNext.startsAt, data.settings.timezone)}{" "}
-                · {upNext.locationLabel}
-              </p>
-              {nextContext?.student.focusArea && (
-                <small>{nextContext.student.focusArea}</small>
-              )}
-            </div>
-            <div className="form-actions">
-              <button
-                className="primary"
-                onClick={() => navigate(coachLessonLink(upNext))}
-              >
-                Open lesson workspace
-              </button>
-              {!upNext.offeringId && upNext.studentId && (
-                <button onClick={() => navigate(coachLessonLink(upNext, true))}>
-                  {lessonDraft(data, upNext.studentId, upNext.id)
-                    ? "Continue draft"
-                    : "Write note"}
+      <div className="today-focus-grid">
+        <Section title="Up next" marked>
+          {upNext ? (
+            <div className="coaching-next">
+              <div>
+                <h3>
+                  {studentName(data, upNext.studentId)} · {upNext.topic}
+                </h3>
+                <p>
+                  {formatStudioDateTime(
+                    upNext.startsAt,
+                    data.settings.timezone,
+                  )}{" "}
+                  · {upNext.locationLabel}
+                </p>
+                {nextContext?.student.focusArea && (
+                  <small>{nextContext.student.focusArea}</small>
+                )}
+              </div>
+              <div className="form-actions">
+                <button
+                  className="primary"
+                  onClick={() => navigate(coachLessonLink(upNext))}
+                >
+                  Open lesson workspace
                 </button>
+                {!upNext.offeringId && upNext.studentId && (
+                  <button
+                    onClick={() => navigate(coachLessonLink(upNext, true))}
+                  >
+                    {lessonDraft(data, upNext.studentId, upNext.id)
+                      ? "Continue draft"
+                      : "Write note"}
+                  </button>
+                )}
+              </div>
+              {nextContext?.feedback[0] && (
+                <small>Recent feedback · {nextContext.feedback[0].title}</small>
               )}
             </div>
-            {nextContext?.feedback[0] && (
-              <small>Recent feedback · {nextContext.feedback[0].title}</small>
+          ) : (
+            <EmptyState
+              title="No upcoming lessons"
+              detail="Your next scheduled lesson appears here."
+            />
+          )}
+        </Section>
+        <Section title="Today’s lessons" marked>
+          {notice && <p className="portal-notice">{notice}</p>}
+          <div className="workflow-list">
+            {lessons.map((lesson, index) => {
+              const isActive =
+                new Date(lesson.startsAt).getTime() <= now &&
+                new Date(lesson.endsAt).getTime() >= now;
+              const isFeatured = lesson.id === featuredLessonId;
+              return (
+                <article
+                  key={lesson.id}
+                  className={`today-lesson-row${isFeatured ? " featured" : ""}`}
+                >
+                  <span>{index + 1}</span>
+                  <div className="today-lesson-copy">
+                    <strong>
+                      {studentName(data, lesson.studentId)} · {lesson.topic}
+                    </strong>
+                    <small>
+                      {formatStudioTime(
+                        lesson.startsAt,
+                        data.settings.timezone,
+                      )}{" "}
+                      · {lesson.locationLabel} ·{" "}
+                      {sourceLabel(lesson.sourceProvider)}
+                    </small>
+                    <div
+                      className="today-prep-checks"
+                      aria-label={`Preparation for ${studentName(data, lesson.studentId)}`}
+                    >
+                      {(
+                        [
+                          ["planned", "Plan"],
+                          ["setupReady", "Setup"],
+                          ["materialsReady", "Materials"],
+                        ] as const
+                      ).map(([key, label]) => (
+                        <label key={key} className="compact-check">
+                          <input
+                            type="checkbox"
+                            checked={Boolean(lesson.preparation?.[key])}
+                            disabled={Boolean(prepBusy)}
+                            onChange={() => void togglePreparation(lesson, key)}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                    <LessonReadinessPanel
+                      lesson={lesson}
+                      data={data}
+                      now={now}
+                    />
+                  </div>
+                  <Status
+                    tone={isActive ? "warn" : isFeatured ? "good" : "neutral"}
+                  >
+                    {isActive
+                      ? "in progress"
+                      : isFeatured
+                        ? "next"
+                        : "scheduled"}
+                  </Status>
+                  <div className="row-actions">
+                    <button onClick={() => navigate(coachLessonLink(lesson))}>
+                      Open lesson
+                    </button>
+                    <button onClick={() => setRescheduling(lesson)}>
+                      Reschedule
+                    </button>
+                    {!isSharedLesson(data, lesson) && (
+                      <button onClick={() => void complete(lesson)}>
+                        Complete
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            })}
+            {!lessons.length && (
+              <EmptyState
+                title="The rest of today is clear"
+                detail="Open the week preview for upcoming lessons."
+              />
             )}
           </div>
-        ) : (
-          <EmptyState
-            title="No upcoming lessons"
-            detail="Your next scheduled lesson appears here."
-          />
-        )}
-      </Section>
+        </Section>
+      </div>
       <aside className="workspace-summary" aria-label="Today at a glance">
         <strong>Today at a glance</strong>
         <span>
@@ -322,82 +416,6 @@ export function TodayView({
             ))}
         </div>
       </details>
-      <Section title="Today’s lessons" marked>
-        {notice && <p className="portal-notice">{notice}</p>}
-        <div className="workflow-list">
-          {lessons.map((lesson, index) => {
-            const isActive =
-              new Date(lesson.startsAt).getTime() <= now &&
-              new Date(lesson.endsAt).getTime() >= now;
-            const isFeatured = lesson.id === featuredLessonId;
-            return (
-              <article
-                key={lesson.id}
-                className={`today-lesson-row${isFeatured ? " featured" : ""}`}
-              >
-                <span>{index + 1}</span>
-                <div className="today-lesson-copy">
-                  <strong>
-                    {studentName(data, lesson.studentId)} · {lesson.topic}
-                  </strong>
-                  <small>
-                    {formatStudioTime(lesson.startsAt, data.settings.timezone)}{" "}
-                    · {lesson.locationLabel} ·{" "}
-                    {sourceLabel(lesson.sourceProvider)}
-                  </small>
-                  <div
-                    className="today-prep-checks"
-                    aria-label={`Preparation for ${studentName(data, lesson.studentId)}`}
-                  >
-                    {(
-                      [
-                        ["planned", "Plan"],
-                        ["setupReady", "Setup"],
-                        ["materialsReady", "Materials"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label key={key} className="compact-check">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(lesson.preparation?.[key])}
-                          disabled={Boolean(prepBusy)}
-                          onChange={() => void togglePreparation(lesson, key)}
-                        />
-                        <span>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                  <LessonReadinessPanel lesson={lesson} data={data} now={now} />
-                </div>
-                <Status
-                  tone={isActive ? "warn" : isFeatured ? "good" : "neutral"}
-                >
-                  {isActive ? "in progress" : isFeatured ? "next" : "scheduled"}
-                </Status>
-                <div className="row-actions">
-                  <button onClick={() => navigate(coachLessonLink(lesson))}>
-                    Open lesson
-                  </button>
-                  <button onClick={() => setRescheduling(lesson)}>
-                    Reschedule
-                  </button>
-                  {!isSharedLesson(data, lesson) && (
-                    <button onClick={() => void complete(lesson)}>
-                      Complete
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-          {!lessons.length && (
-            <EmptyState
-              title="The rest of today is clear"
-              detail="Open the week preview for upcoming lessons."
-            />
-          )}
-        </div>
-      </Section>
       <Section title="Notes due within 48 hours" marked>
         <div className="workflow-list">
           {notePage.visible.map((lesson) => {

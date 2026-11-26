@@ -184,7 +184,15 @@
 }
 @media (max-width: 850px) {
   .actor-draft-preview .actor-public.actor-render-preview .actor-public-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+    min-height: 0 !important;
+    gap: 24px !important;
     padding-block: 16px 32px;
+  }
+
+  .actor-draft-preview .actor-public.actor-render-preview h1 {
+    font-size: clamp(36px, 7vw, 62px);
+    overflow-wrap: anywhere;
   }
 
   .actor-draft-preview

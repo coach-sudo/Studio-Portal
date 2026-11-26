@@ -1,5 +1,12 @@
 /* Pair each brand fill with its --on-* text token. Keep body and control labels at 4.5:1 or higher. */
 :root {
+  --font-body: "DM Sans", sans-serif;
+  --font-heading: Georgia, "Times New Roman", serif;
+  --leading-body: 1.6;
+  --leading-heading: 1.12;
+  --control-border: #87958b;
+  --control-disabled-fill: #e8ece7;
+  --control-disabled-text: #58645c;
   --on-forest: #ffffff;
   --on-gold: #000000;
   --on-coral: #000000;
@@ -54,7 +61,7 @@
   --surface-warning: #faf2e2;
   --surface-danger: #faeef0;
   --surface-info: #edf3f3;
-  --app-canvas: var(--accessible-canvas, #f3f5f2);
+  --app-canvas: var(--accessible-canvas, #f7f5f0);
   --app-surface: #ffffff;
   --app-surface-soft: #f3f6f1;
   --app-border: color-mix(in srgb, var(--forest), transparent 85%);
@@ -71,6 +78,15 @@
 }
 
 :root[data-portal-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f3f5f1;
+  --on-surface: #f3f5f1;
+  --muted: #b4c1b8;
+  --line: #52665a;
+  --wash: #26392f;
+  --control-border: #8c9d91;
+  --control-disabled-fill: #2c3e33;
+  --control-disabled-text: #b4c1b8;
   --app-canvas: #101c18;
   --app-surface: #192922;
   --app-surface-soft: #20332b;
