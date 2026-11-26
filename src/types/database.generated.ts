@@ -4911,6 +4911,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      begin_gmail_delivery_oauth: {
+        Args: {
+          p_actor: string
+          p_browser: string
+          p_state: string
+          p_studio: string
+          p_verifier: string
+        }
+        Returns: undefined
+      }
       calendar_claim_current: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
@@ -5484,6 +5494,10 @@ export type Database = {
         Args: { p_browser: string; p_state: string }
         Returns: Json
       }
+      consume_gmail_delivery_oauth: {
+        Args: { p_browser: string; p_state: string }
+        Returns: Json
+      }
       correct_lesson_datetime: {
         Args: { p_key: string; p_value: Json }
         Returns: Json
@@ -5626,6 +5640,14 @@ export type Database = {
       get_material_assignment: { Args: { p_id: string }; Returns: Json }
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
+      gmail_delivery_oauth_refresh: {
+        Args: { p_client: string; p_email: string; p_studio: string }
+        Returns: string
+      }
+      gmail_delivery_oauth_status: {
+        Args: { p_client?: string; p_studio: string }
+        Returns: Json
+      }
       household_access_states: { Args: { p_student: string }; Returns: Json }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
       lesson_bulk_candidates: {
@@ -5948,6 +5970,16 @@ export type Database = {
           p_studio: string
         }
         Returns: boolean
+      }
+      save_gmail_delivery_oauth: {
+        Args: {
+          p_actor: string
+          p_client: string
+          p_email: string
+          p_refresh: string
+          p_studio: string
+        }
+        Returns: undefined
       }
       save_material_study: {
         Args: {

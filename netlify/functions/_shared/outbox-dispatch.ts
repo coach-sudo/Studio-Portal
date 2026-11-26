@@ -40,8 +40,8 @@ export async function dispatchOutbox(
   if (claimed.error) throw claimed.error;
   const messages = (claimed.data ?? []) as Tables<"outbox_messages">[];
   let sent = 0,
-    suppressed = 0,
-    token: string | undefined;
+    suppressed = 0;
+  const tokens = new Map<string, string>();
   // Restore only unstarted claims still owned by this batch. Never touch a newer
   // coach edit/cancellation or another claimant; delivery already started settles normally.
   const releaseUnstarted = async (remaining: Tables<"outbox_messages">[]) => {
@@ -110,7 +110,13 @@ export async function dispatchOutbox(
         continue;
       }
       assertWorkerEnabled("automations");
-      token ??= await googleAccessToken(undefined, "gmail");
+      let token = tokens.get(message.studio_id);
+      if (!token) {
+        token = await googleAccessToken(undefined, {
+          gmailDeliveryStudio: message.studio_id,
+        });
+        tokens.set(message.studio_id, token);
+      }
       // An authoritative trigger may have cancelled this item while provider auth was in flight.
       const current = await db
         .from("outbox_messages")

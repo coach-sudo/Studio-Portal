@@ -1,5 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import type { RepairResult, StudioHealth } from "../domain/systemHealth";
+import type {
+  GmailCheck,
+  GmailConnection,
+  RepairResult,
+  StudioHealth,
+} from "../domain/systemHealth";
 import { supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
 
@@ -19,7 +24,7 @@ async function requestHealth<T>(
   const response = await fetch(
     "/api/v2/studio-health/" + action + "?" + params,
     {
-      method: action === "status" ? "GET" : "POST",
+      method: action === "status" || action === "gmail-status" ? "GET" : "POST",
       headers: {
         Authorization: "Bearer " + token,
         ...(options?.body ? { "Content-Type": "application/json" } : {}),
@@ -111,10 +116,13 @@ export function reviewCalendarConflict(
   });
 }
 
-export async function beginCalendarAuthorization(studio: string) {
+async function beginGoogleAuthorization(
+  studio: string,
+  service: "calendar" | "gmail",
+) {
   const response = await requestHealth<{ authorize: string }>(
     studio,
-    "calendar-oauth",
+    service + "-oauth",
     {
       signal: AbortSignal.timeout(12000),
     },
@@ -124,8 +132,29 @@ export async function beginCalendarAuthorization(studio: string) {
     authorize.origin !== "https://accounts.google.com" ||
     authorize.pathname !== "/o/oauth2/v2/auth"
   )
-    throw new Error("Calendar authorization is unavailable.");
+    throw new Error("Google authorization is unavailable.");
   window.location.assign(authorize.href);
+}
+
+export const beginCalendarAuthorization = (studio: string) =>
+  beginGoogleAuthorization(studio, "calendar");
+
+export const beginGmailAuthorization = (studio: string) =>
+  beginGoogleAuthorization(studio, "gmail");
+
+export function useGmailConnection(studio: string) {
+  return useQuery({
+    queryKey: [...studioHealthKey(studio), "gmail-connection"],
+    queryFn: ({ signal }) =>
+      requestHealth<GmailConnection>(studio, "gmail-status", { signal }),
+    retry: false,
+  });
+}
+
+export function checkGmailAuthorization(studio: string) {
+  return requestHealth<{ state: GmailCheck }>(studio, "gmail-check", {
+    signal: AbortSignal.timeout(8000),
+  });
 }
 
 export type CalendarRoleSelection = {

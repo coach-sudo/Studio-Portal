@@ -15,6 +15,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Dialog, Section, Status } from "../../components/Primitives";
 import {
   beginCalendarAuthorization,
+  beginGmailAuthorization,
+  checkGmailAuthorization,
   checkMissedCalendarChanges,
   manageCalendarRoleSelection,
   type CalendarRoleSelection,
@@ -22,6 +24,7 @@ import {
   retryHealthIssue,
   reviewCalendarConflict,
   studioHealthKey,
+  useGmailConnection,
   useSystemHealth,
 } from "../../data/systemHealth";
 import {
@@ -598,27 +601,19 @@ function ConnectionDetail({
       )}
       {service === "email" && (
         <>
+          {!isDemo && (
+            <GmailConnectionControls
+              studio={studio}
+              lastSuccessAt={observation?.lastSuccessAt}
+              timezone={timezone}
+            />
+          )}
           <Link
             className="button-link"
             to="/coach/inbox?delivery=recent#delivery-history"
           >
             Open communication history
           </Link>
-          {observation?.authorization === "needs_review" && (
-            <Link
-              className="button-link"
-              to="/coach/settings?panel=integrations&service=calendar"
-            >
-              Check the shared Google authorization
-            </Link>
-          )}
-          {observation?.configured === false && (
-            <p>
-              Verify the Gmail API and <code>gmail.send</code> grant for the
-              studio account in Google Cloud. The deployment administrator
-              manages the shared Google credential in Netlify Functions.
-            </p>
-          )}
         </>
       )}
       {issues.length > 0 && <IssueList issues={issues} timezone={timezone} />}
@@ -657,6 +652,156 @@ function ConnectionDetail({
           )}
         </dl>
       </details>
+    </div>
+  );
+}
+
+const gmailCheckMessages = {
+  verified: "Google accepted the Gmail authorization check. No email was sent.",
+  authorization:
+    "Google rejected the Gmail grant. Reauthorize the studio Gmail account.",
+  configuration:
+    "Ask the deployment administrator to verify the dedicated Gmail OAuth configuration.",
+  unavailable: "Google could not be reached or checked. Try again shortly.",
+};
+const gmailOAuthMessages = new Map([
+  ["connected", "Gmail reauthorized. The delivery hold is still in place."],
+  [
+    "account",
+    "Choose the configured studio Gmail account when Google asks you to sign in.",
+  ],
+  [
+    "permissions",
+    "Google did not grant Gmail send access. Review the permissions and try again.",
+  ],
+  ["declined", "Gmail authorization was cancelled."],
+  [
+    "invalid",
+    "The Gmail request expired or did not match this browser. Start again.",
+  ],
+  [
+    "delivery_active",
+    "Ask the deployment administrator to hold delivery before reconnecting Gmail.",
+  ],
+  ["unavailable", "Gmail authorization could not finish. Try again."],
+]);
+
+function GmailConnectionControls({
+  studio,
+  lastSuccessAt,
+  timezone,
+}: {
+  studio: string;
+  lastSuccessAt?: string | null;
+  timezone: string;
+}) {
+  const [params] = useSearchParams();
+  const details = useGmailConnection(studio);
+  const check = useMutation({
+    mutationFn: () => checkGmailAuthorization(studio),
+  });
+  const oauth = useMutation({
+    mutationFn: () => beginGmailAuthorization(studio),
+  });
+  const connection = details.data;
+  const authResult = gmailOAuthMessages.get(params.get("gmail_auth") ?? "");
+  const checkResult = check.data?.state;
+  const connectionLabel =
+    checkResult === "verified"
+      ? "Authorization verified"
+      : checkResult === "authorization"
+        ? "Reauthorization required"
+        : checkResult === "configuration" ||
+            connection?.authorization === "configuration"
+          ? "Configuration required"
+          : checkResult === "unavailable" || details.isError
+            ? "Could not verify"
+            : connection?.authorization === "managed"
+              ? "Authorized with Google"
+              : connection?.authorization === "legacy"
+                ? "Existing credential · verification available"
+                : "Checking…";
+  return (
+    <div className="health-stack">
+      <dl className="health-facts">
+        <div>
+          <dt>Gmail connection</dt>
+          <dd>{connectionLabel}</dd>
+        </div>
+        <div>
+          <dt>Connected account</dt>
+          <dd>
+            {connection?.authorizedAt
+              ? connection.account
+              : connection?.account
+                ? connection.account + " (configured, pending verification)"
+                : "Unverified"}
+          </dd>
+        </div>
+        <div>
+          <dt>Last accepted by Gmail</dt>
+          <dd>{timestamps(lastSuccessAt, timezone)}</dd>
+        </div>
+        <div>
+          <dt>Automated delivery</dt>
+          <dd>
+            {connection
+              ? connection.deliveryHeld
+                ? "Intentionally held"
+                : "Worker enabled"
+              : "Unavailable"}
+          </dd>
+        </div>
+      </dl>
+      {connection?.deliveryHeld && (
+        <p>
+          Gmail can be checked while delivery is held. Reauthorizing keeps the
+          hold in place.
+        </p>
+      )}
+      {connection && !connection.availableHere && (
+        <p>
+          Ask the deployment administrator to configure the Gmail API, dedicated
+          Google OAuth client, and callback for this portal.
+        </p>
+      )}
+      {connection?.availableHere && !connection.deliveryHeld && (
+        <p>
+          Ask the deployment administrator to hold delivery before reconnecting
+          Gmail.
+        </p>
+      )}
+      {details.isError && (
+        <button type="button" onClick={() => void details.refetch()}>
+          Reload Gmail status
+        </button>
+      )}
+      <button
+        type="button"
+        className="primary"
+        disabled={!connection || check.isPending || oauth.isPending}
+        onClick={() => check.mutate()}
+      >
+        {check.isPending ? "Checking Gmail…" : "Check Gmail authorization"}
+      </button>
+      {connection?.canReauthorize && (
+        <button
+          type="button"
+          disabled={oauth.isPending || check.isPending}
+          onClick={() => oauth.mutate()}
+        >
+          {oauth.isPending ? "Opening Google…" : "Reauthorize Gmail"}
+        </button>
+      )}
+      {checkResult && <p role="status">{gmailCheckMessages[checkResult]}</p>}
+      {check.isError && <p role="status">{gmailCheckMessages.unavailable}</p>}
+      {authResult && <p role="status">{authResult}</p>}
+      {oauth.isError && (
+        <p role="status">
+          Gmail authorization could not start. Reload Gmail status and try
+          again.
+        </p>
+      )}
     </div>
   );
 }

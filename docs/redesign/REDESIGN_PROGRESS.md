@@ -39,4 +39,30 @@ Private note recovery uses a separate record scoped to the authenticated coach, 
 
 The additive migrations are `20261126204459_release_c_lesson_note_recovery.sql` and `20261126204511_assignment_attachment_access.sql`. For a UI rollback, deploy the accepted Release B revision and retain the additive records and private storage policies. Review retention before any later removal. Dropping an attachment link or recovery table would discard recorded state. Review the production migration separately before enabling Release C.
 
-TypeScript, the production-mode build, bundle gates, 67 focused tests and ten browser cases across Chromium and WebKit passed. The browser cases included a loopback upload with actual multipart bytes and retry of the same uploaded asset after attachment failed. See [Release C pilot captures](VISUAL_ACCEPTANCE.md#release-c-writing-and-upload-evidence). Physical keyboard tests and real staged file authorization remain integration checks before broader use in dashboards or the full Actor Page redesign.
+TypeScript, the production-mode build, bundle gates, 67 focused tests and ten browser cases across Chromium and WebKit passed for the approved pilots. The browser cases included a loopback upload with actual multipart bytes and retry of the same uploaded asset after attachment failed. See [Release C pilot captures](VISUAL_ACCEPTANCE.md#release-c-writing-and-upload-evidence). Physical keyboard tests and real staged file authorization remain integration checks before broader use in dashboards or the full Actor Page redesign.
+
+### Gmail connection recovery
+
+Studio Settings → Integrations → Gmail reports the sender account once verified, the latest Gmail provider acceptance recorded by the portal, and the automated delivery hold. The authorization check refreshes a token and sends no message. A legacy token refresh cannot establish the sender identity or prove Gmail API acceptance. Coach access is scoped to the deployment's configured studio.
+
+Gmail reauthorization uses a separate Google Web OAuth client with offline consent, PKCE, one-time browser-bound state, and a verified match to the configured sender. The additive `20261126223935_gmail_delivery_oauth.sql` migration stores the refresh grant in Vault and restricts access to the service role. Calendar and Gmail inbox import continue to use their existing credentials. Outbox sender recovery uses the dedicated grant for the configured studio after consent. If an existing dedicated grant cannot be verified, the worker fails closed for that studio.
+
+Before production enablement, separately approve Vault migration application and enable the Gmail API for the dedicated Google OAuth Web application. Configure the consent audience and any applicable verification for the `gmail.send` scope, plus `openid` and `email` for sender identity. Register the exact canonical HTTPS callback at `/api/v2/gmail/oauth/callback`. Set server-side `GOOGLE_GMAIL_OAUTH_CLIENT_ID`, `GOOGLE_GMAIL_OAUTH_CLIENT_SECRET`, `GOOGLE_GMAIL_OAUTH_REDIRECT_URI`, and `GOOGLE_GMAIL_ACCOUNT_EMAIL` for the intended deployment. Keep the existing email delivery hold in force during consent and verification. The portal does not modify preferences, queue status, or worker configuration. Real Google consent requires a separately configured test client and account for hosted acceptance.
+
+For rollback, retain the delivery hold, the prior accepted privacy-safe deployment, and the additive Vault migration. A pre-Gmail build uses the legacy sender, so verify the intended sender before any separately approved delivery activation. Credentials can be revoked in Google and later removed from Vault under separate authorization if the dedicated feature is retired.
+
+## Release F · Smart Notification Batching
+
+Reserved for Release F. The mailing workflows, existing preferences, and holds carry through Releases C and D.
+
+- Start a configurable collection window with the first qualifying event. Default to 15 minutes.
+- Consolidate compatible emails for bookings, cancellations, rescheduling, assignments, shared materials, published feedback, and other qualifying events.
+- Use singular or plural subjects and content with relevant record details.
+- Group only within the correct recipient, student, studio, and permission boundaries. Offer household consolidation only where explicitly authorized.
+- Reconcile contradictory or superseded events before delivery.
+- Deliver urgent schedule changes, security alerts, payment receipts, and other time-sensitive transactional notices immediately.
+- Use the existing outbox for durable batching, safe retries, concurrency control, and duplicate prevention.
+- Provide batching preferences and delivery queue visibility in Studio Settings → Communications.
+- Continue delivering prompt in-app notifications independently of email batching.
+
+Implement the batching logic, migrations, workers, and delivery settings during Release F.

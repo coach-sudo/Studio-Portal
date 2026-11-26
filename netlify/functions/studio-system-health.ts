@@ -3,10 +3,10 @@ import {
   activeCalendarRoles,
   manageCalendarRoles,
 } from "./_shared/calendar-roles";
-import { googleAccessToken } from "./_shared/google";
+import { GoogleAuthorizationError, googleAccessToken } from "./_shared/google";
 import type { Config, Context } from "@netlify/functions";
 import { z } from "zod";
-import type { RepairResult } from "../../src/domain/systemHealth";
+import type { GmailCheck, RepairResult } from "../../src/domain/systemHealth";
 import {
   calendarReviewRequest,
   reviewCalendarConflict,
@@ -16,6 +16,11 @@ import {
   calendarOAuthConfig,
   calendarOAuthStudio,
 } from "./_shared/calendar-oauth";
+import {
+  beginGmailOAuth,
+  gmailConnection,
+  legacyGmailConfigured,
+} from "./_shared/gmail-oauth";
 import { apiError, AppError, json } from "./_shared/http";
 import {
   googleConfigured,
@@ -64,13 +69,19 @@ export default async function studioSystemHealth(
       action !== "calendar-review" &&
       action !== "calendar-oauth" &&
       action !== "calendar-roles" &&
-      action !== "calendar-catch-up"
+      action !== "calendar-catch-up" &&
+      action !== "gmail-status" &&
+      action !== "gmail-check" &&
+      action !== "gmail-oauth"
     )
       throw new AppError("NOT_FOUND", {
         status: 404,
         message: "Unknown System Health action.",
       });
-    if (request.method !== (action === "status" ? "GET" : "POST"))
+    if (
+      request.method !==
+      (action === "status" || action === "gmail-status" ? "GET" : "POST")
+    )
       throw new AppError("METHOD_NOT_ALLOWED", {
         status: 405,
         message: "Method not allowed.",
@@ -94,6 +105,30 @@ export default async function studioSystemHealth(
       .maybeSingle();
     if (membership.error || !membership.data) throw AppError.forbidden();
     const db = serviceClient();
+    if (
+      action === "gmail-status" ||
+      action === "gmail-check" ||
+      action === "gmail-oauth"
+    ) {
+      if (studio.data !== (await calendarOAuthStudio(db)))
+        throw AppError.forbidden();
+      if (action === "gmail-oauth")
+        return await beginGmailOAuth(request, db, studio.data, actor.data.user.id);
+      if (action === "gmail-status")
+        return json(await gmailConnection(db, studio.data, url.origin));
+      let state: GmailCheck = "verified";
+      try {
+        await googleAccessToken(AbortSignal.timeout(5000), {
+          gmailDeliveryStudio: studio.data,
+        });
+      } catch (error) {
+        state =
+          error instanceof GoogleAuthorizationError
+            ? error.reason
+            : "unavailable";
+      }
+      return json({ state });
+    }
     if (action === "status") {
       const value = url.searchParams.get("issue");
       const issue = value === null ? undefined : identifier.safeParse(value);
@@ -200,7 +235,14 @@ export default async function studioSystemHealth(
         result: "worker_disabled" satisfies RepairResult,
         correlationId: id,
       });
-    if (!googleConfigured())
+    if (
+      payload.data.service === "calendar"
+        ? !googleConfigured()
+        : studio.data === (await calendarOAuthStudio(db))
+          ? (await gmailConnection(db, studio.data, url.origin))
+              .authorization === "configuration"
+          : !legacyGmailConfigured()
+    )
       return json({
         result: "connection_required" satisfies RepairResult,
         correlationId: id,
