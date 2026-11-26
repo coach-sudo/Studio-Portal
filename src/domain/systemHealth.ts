@@ -150,7 +150,7 @@ export const issueContent = {
   calendar_review: issue(
     "Calendar change requires review",
     "An existing event, recurring change or conflict needs review before synchronization can continue.",
-    "Open the affected lesson and compare it with Google Calendar. Share the diagnostic reference if the projection remains held.",
+    "Compare the mapped event with the lesson. Coach�D can close a reviewed timing conflict once the times match or you choose to keep a completed lesson as recorded.",
   ),
   calendar_stalled: issue(
     "Calendar processing is delayed",

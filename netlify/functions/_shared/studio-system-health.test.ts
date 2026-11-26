@@ -77,7 +77,7 @@ it.each([
   "denies %s when the selected studio has no matching coach membership",
   async () => {
     mocks.membership.mockResolvedValue({ data: null });
-    for (const action of ["status", "check", "retry"])
+    for (const action of ["status", "check", "retry", "calendar-review"])
       expect((await request(action)).status).toBe(403);
     expect(mocks.service).not.toHaveBeenCalled();
     expect(mocks.eq).toHaveBeenCalledWith("studio_id", studio);
@@ -109,4 +109,14 @@ it("requires an authenticated actor and separates the check from recovery", asyn
       p_service: "calendar",
     }),
   );
+});
+
+it("rejects malformed Calendar approvals before reading provider data", async () => {
+  const response = await request("calendar-review", undefined, {
+    issue,
+    confirm: { version: 2 },
+  });
+  expect(response.status).toBe(400);
+  expect(mocks.read).not.toHaveBeenCalled();
+  expect(mocks.rpc).not.toHaveBeenCalled();
 });

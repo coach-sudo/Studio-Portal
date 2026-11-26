@@ -1,3 +1,4 @@
+import { activeCalendarRoles } from "./calendar-roles";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   freshHealthTime,
@@ -12,6 +13,7 @@ import {
   GoogleAuthorizationError,
   GoogleAvailabilityError,
 } from "./google";
+import { calendarOAuthConfig } from "./calendar-oauth";
 import { releaseMetadata } from "./release";
 import { workerEnabled } from "./worker-controls";
 
@@ -82,7 +84,7 @@ const configured = (...keys: string[]) => keys.some((key) => Boolean(get(key)));
 export const googleConfigured = () =>
   configured("GOOGLE_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_ID") &&
   configured("GOOGLE_CLIENT_SECRET", "GOOGLE_OAUTH_CLIENT_SECRET") &&
-  configured("GOOGLE_REFRESH_TOKEN");
+  (configured("GOOGLE_REFRESH_TOKEN") || Boolean(calendarOAuthConfig()));
 
 async function googleCalendarProbe(calendar: string): Promise<Probe> {
   const at = new Date().toISOString();
@@ -397,7 +399,7 @@ export async function runStudioHealth(
   const owner = configuredStudio
     ? studio === configuredStudio
     : slug === (get("STUDIO_SLUG") || "stage-story");
-  const calendar = owner ? get("GOOGLE_CALENDAR_ID") || "primary" : "";
+  const calendar = owner ? (await activeCalendarRoles()).outgoing : "";
   const google = owner && googleConfigured();
   const oldProbe = previous.observations.find(
     (entry) => entry.service === "calendar",
