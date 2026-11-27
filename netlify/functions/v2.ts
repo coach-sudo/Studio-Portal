@@ -201,6 +201,22 @@ export default async (request: Request, context: Context) => {
       message: "Unknown command for this domain.",
     });
   } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      error.message === "ASSIGNMENT_ATTACHMENTS_PREVENT_MERGE"
+    ) {
+      return apiError(
+        new AppError("VALIDATION_FAILED", {
+          status: 422,
+          message:
+            "Keep the student profiles separate. The profile selected for removal has private assignment attachments.",
+          cause: error,
+        }),
+        id,
+      );
+    }
     return apiError(error, id);
   }
 };
