@@ -113,13 +113,24 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
       await expect(
         editor.getByRole("textbox", { name: "Note", exact: true }),
       ).toContainText("Find the clear objective");
+      const title = `Latest private takeaway revision ${attempt + 1}`;
       await editor
-        .getByRole("button", { name: "Save changes", exact: true })
+        .getByRole("textbox", { name: "Title", exact: true })
+        .fill(title);
+      await editor
+        .getByRole("button", { name: "Save draft", exact: true })
         .click();
+      await expect(editor.getByRole("status")).toHaveText(
+        "Private draft saved",
+      );
+      await editor.getByRole("button", { name: "Close", exact: true }).click();
       await expect(editor).toHaveCount(0);
       expect(
         f.sql(`select count(*) from notes where student_id='${f.studentId}'`),
       ).toBe("1");
+      expect(
+        f.sql(`select title from notes where id='${note}' and status='draft'`),
+      ).toBe(title);
     }
     await page.goto(`${base}/household`);
     await expect(page.getByText("Casey Payer", { exact: true })).toBeVisible();

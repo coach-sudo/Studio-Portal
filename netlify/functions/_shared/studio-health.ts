@@ -13,6 +13,7 @@ import {
   GoogleAuthorizationError,
   GoogleAvailabilityError,
 } from "./google";
+import { gmailConnection } from "./gmail-oauth";
 import { calendarOAuthConfig } from "./calendar-oauth";
 import { releaseMetadata } from "./release";
 import { workerEnabled } from "./worker-controls";
@@ -165,6 +166,7 @@ export function deriveObservation(
   options: {
     owner: boolean;
     google: boolean;
+    gmail?: boolean;
     stripe: boolean;
     workers: {
       calendar: boolean;
@@ -185,19 +187,21 @@ export function deriveObservation(
   const lastGoogleCheck =
     probe && freshHealthTime(probe.at, 24 * hour, now) ? probe : undefined;
   const credentialed = owner
-    ? service === "calendar" || service === "email"
+    ? service === "calendar"
       ? google
-      : service === "stripe"
-        ? stripe
-        : true
+      : service === "email"
+        ? (options.gmail ?? null)
+        : service === "stripe"
+          ? stripe
+          : true
     : service === "access"
       ? true
       : null;
   const authorization =
-    service === "calendar" || service === "email"
+    service === "calendar"
       ? lastGoogleCheck?.result === "authorization"
         ? "needs_review"
-        : service === "calendar" && lastGoogleCheck?.result === "accessible"
+        : lastGoogleCheck?.result === "accessible"
           ? "verified"
           : "unknown"
       : service === "access" && observed
@@ -281,11 +285,6 @@ export function deriveObservation(
       observation.detail =
         "The outbox worker is intentionally disabled in this deployment.";
     }
-    if (owner && lastGoogleCheck?.result === "authorization") {
-      observation.state = "attention";
-      observation.detail =
-        "Gmail uses the same Google authorization. Review the Google connection.";
-    }
   } else if (service === "stripe") {
     observation.detail = observed
       ? "Coach’D recently processed a linked payment webhook."
@@ -351,8 +350,7 @@ export function deriveObservation(
           lastGoogleCheck?.result !== "authorization"
         : service === "email" &&
           problem.scope === "transactional" &&
-          (!owner || (workers.email && google)) &&
-          lastGoogleCheck?.result !== "authorization");
+          (!owner || (workers.email && options.gmail === true)));
     return { ...problem, severity, retryable };
   });
   if (evidence && credentialed === false) observation.state = "not_configured";
@@ -412,7 +410,7 @@ export async function runStudioHealth(
       oldProbe?.result === "throttled" &&
       freshHealthTime(oldProbe.at, 5 * 60_000)
     );
-  const [probe, evidence] = await Promise.all([
+  const [probe, evidence, gmail] = await Promise.all([
     readProvider
       ? googleCalendarProbe(calendar)
       : Promise.resolve(google ? oldProbe : undefined),
@@ -426,6 +424,11 @@ export async function runStudioHealth(
         ).catch(() => undefined),
       ),
     ),
+    owner
+      ? gmailConnection(db, studio, "")
+          .then(({ authorization }) => authorization !== "configuration")
+          .catch(() => undefined)
+      : Promise.resolve(false),
   ]);
   const workers = {
     calendar: workerEnabled("calendar"),
@@ -438,6 +441,7 @@ export async function runStudioHealth(
     deriveObservation(service, evidence[index], {
       owner,
       google,
+      gmail,
       calendar,
       probe,
       workers,

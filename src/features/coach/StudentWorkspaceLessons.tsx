@@ -1,4 +1,5 @@
 import { CoachLessonBilling } from "../finance/CoachLessonBilling";
+import { AssignmentAttachments } from "../../components/AssignmentAttachments";
 import { lessonBillingStatus } from "../../domain/lessonPayment";
 import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
@@ -864,6 +865,15 @@ function CoachLessonWorkspace({
                 <div>
                   <strong>{item.title}</strong>
                   <small>{item.details}</small>
+                  {!isDemo && item.status === "completed" && (
+                    <AssignmentAttachments
+                      scope={{
+                        assignmentId: item.id,
+                        studentId: item.studentId,
+                        studioId: data.studioId,
+                      }}
+                    />
+                  )}
                 </div>
                 <Status tone={item.helpRequested ? "warn" : "neutral"}>
                   {item.helpRequested

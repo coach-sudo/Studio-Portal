@@ -49,7 +49,8 @@ function request(
     new Request(
       "https://local.test/api/v2/studio-health/" + action + "?studio=" + studio,
       {
-        method: action === "status" ? "GET" : "POST",
+        method:
+          action === "status" || action === "gmail-status" ? "GET" : "POST",
         headers: { authorization },
         body: body ? JSON.stringify(body) : undefined,
       },
@@ -77,7 +78,15 @@ it.each([
   "denies %s when the selected studio has no matching coach membership",
   async () => {
     mocks.membership.mockResolvedValue({ data: null });
-    for (const action of ["status", "check", "retry", "calendar-review"])
+    for (const action of [
+      "status",
+      "check",
+      "retry",
+      "calendar-review",
+      "gmail-status",
+      "gmail-check",
+      "gmail-oauth",
+    ])
       expect((await request(action)).status).toBe(403);
     expect(mocks.service).not.toHaveBeenCalled();
     expect(mocks.eq).toHaveBeenCalledWith("studio_id", studio);

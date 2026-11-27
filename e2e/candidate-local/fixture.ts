@@ -130,6 +130,8 @@ export async function installFixture(
     packageBillingOptions: [] as Record<string, unknown>[],
     lessonParticipants: [] as Record<string, unknown>[],
     additionalLessons: [] as Record<string, unknown>[],
+    notes: [] as Record<string, unknown>[],
+    assignments: [] as Record<string, unknown>[],
     imports: [] as Record<string, unknown>[],
     pageErrors: [] as string[],
     requests: [] as string[],
@@ -239,6 +241,7 @@ export async function installFixture(
   const rows = (table: string): unknown[] => {
     if (role === "unrelated" || state.revoked) return [];
     if (table === "students") return [student];
+    if (table === "notes") return state.notes;
     if (table === "booking_services") return state.bookingServices;
     if (table === "bookings") return state.bookings;
     if (table === "lesson_participants") return state.lessonParticipants;
@@ -269,6 +272,7 @@ export async function installFixture(
       return [{ user_id: identity, account_type: role }];
     if (table === "lesson_list_rows")
       return state.empty ? [] : [lesson, ...state.additionalLessons];
+    if (table === "assignments") return state.assignments;
     if (table === "package_definitions") return state.packageDefinitions;
     if (table === "package_billing_options") return state.packageBillingOptions;
     return [];
@@ -414,6 +418,8 @@ export async function installFixture(
             ? state.packageBillingOptions
             : [],
           lessonParticipants: state.lessonParticipants,
+          assignments: domains.includes("work") ? rows("assignments") : [],
+          notes: domains.includes("work") ? rows("notes") : [],
           lessons: domains.some((d) => ["lessons", "booking"].includes(d))
             ? rows("lesson_list_rows")
             : [],

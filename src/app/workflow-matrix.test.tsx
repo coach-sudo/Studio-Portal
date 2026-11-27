@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -37,6 +37,17 @@ const renderGuardian = (path: string) =>
       </StudioStoreProvider>
     </QueryClientProvider>,
   );
+
+function pasteNote(dialog: HTMLElement, text: string) {
+  const editor = within(dialog).getByRole("textbox", {
+    name: "Note",
+  });
+  fireEvent.paste(editor, {
+    clipboardData: {
+      getData: (format: string) => (format === "text/plain" ? text : ""),
+    },
+  });
+}
 
 describe("50 start-to-finish studio workflows", () => {
   describe("coach — 20 workflows", () => {
@@ -239,18 +250,15 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("button", { name: /New note/i }),
       );
       const dialog = screen.getByRole("dialog");
-      await user.type(
-        within(dialog).getByLabelText("Note"),
-        "Private coaching observation.",
-      );
+      pasteNote(dialog, "Private coaching observation.");
       expect(within(dialog).getByLabelText("Note")).toHaveTextContent(
         "Private coaching observation.",
       );
       await user.click(
-        within(dialog).getByRole("button", { name: "Save note" }),
+        within(dialog).getByRole("button", { name: "Save draft" }),
       );
       expect(
-        await screen.findByText("Private draft saved."),
+        await within(dialog).findByText("Private draft saved"),
       ).toBeInTheDocument();
     });
     it("10 publishes a student note", async () => {
@@ -260,16 +268,15 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("button", { name: /New note/i }),
       );
       const dialog = screen.getByRole("dialog");
-      await user.type(
-        within(dialog).getByLabelText("Note"),
-        "Great work today.",
-      );
-      await user.click(within(dialog).getByLabelText(/Publish to student/i));
+      pasteNote(dialog, "Great work today.");
       await user.click(
-        within(dialog).getByRole("button", { name: "Save note" }),
+        within(dialog).getByRole("button", { name: "Review publication" }),
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: "Publish note" }),
       );
       expect(
-        await screen.findByText("Note published to the student."),
+        await within(dialog).findByText("Published to student"),
       ).toBeInTheDocument();
     });
     it("11 changes portal access", async () => {
@@ -472,10 +479,7 @@ describe("50 start-to-finish studio workflows", () => {
         "New actor biography.",
       );
       await user.click(
-        within(dialog).getByLabelText(/Submit for coach review/i),
-      );
-      await user.click(
-        within(dialog).getByRole("button", { name: "Save draft" }),
+        within(dialog).getByRole("button", { name: "Submit for coach review" }),
       );
       expect(
         await screen.findByText(/submitted for coach review/i),

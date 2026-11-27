@@ -21,3 +21,17 @@ test("@smoke @mobile staging app loads on desktop and mobile", async ({
   await page.goto("/login");
   await expect(page.locator("body")).toBeVisible();
 });
+
+test("@smoke the deployed Gmail callback reaches its handler", async ({
+  request,
+}) => {
+  test.skip(
+    process.env.E2E_EPHEMERAL !== "true",
+    "Requires the isolated stack",
+  );
+  const response = await request.get("/api/v2/gmail/oauth/callback", {
+    maxRedirects: 0,
+  });
+  expect(response.status()).toBe(404);
+  expect(await response.text()).toBe("");
+});

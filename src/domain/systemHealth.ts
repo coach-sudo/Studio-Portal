@@ -341,3 +341,14 @@ export function diagnosticText(
     "Next step: " + details.next,
   ].join("\n");
 }
+export type GmailConnection = {
+  authorization: "managed" | "legacy" | "configuration";
+  account: string | null;
+  authorizedAt: string | null;
+  availableHere: boolean;
+  canReauthorize: boolean;
+  deliveryHeld: boolean;
+};
+
+export type GmailCheck =
+  "verified" | "configuration" | "authorization" | "unavailable";

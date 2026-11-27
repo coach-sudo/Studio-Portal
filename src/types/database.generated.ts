@@ -101,6 +101,67 @@ export type Database = {
           },
         ]
       }
+      assignment_attachments: {
+        Row: {
+          assignment_id: string
+          created_at: string
+          file_size_bytes: number
+          id: string
+          mime_type: string
+          original_name: string
+          storage_path: string
+          student_id: string
+          studio_id: string
+          submitted_at: string | null
+        }
+        Insert: {
+          assignment_id: string
+          created_at?: string
+          file_size_bytes: number
+          id?: string
+          mime_type: string
+          original_name: string
+          storage_path: string
+          student_id: string
+          studio_id: string
+          submitted_at?: string | null
+        }
+        Update: {
+          assignment_id?: string
+          created_at?: string
+          file_size_bytes?: number
+          id?: string
+          mime_type?: string
+          original_name?: string
+          storage_path?: string
+          student_id?: string
+          studio_id?: string
+          submitted_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignment_attachments_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_attachments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignment_attachments_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assignments: {
         Row: {
           activity_config: Json
@@ -4815,11 +4876,42 @@ export type Database = {
         Args: { p_invoice: string; p_line: string; p_version: number }
         Returns: Json
       }
+      attach_assignment_file: {
+        Args: { p_assignment: string; p_hash: string; p_name: string }
+        Returns: {
+          assignment_id: string
+          created_at: string
+          file_size_bytes: number
+          id: string
+          mime_type: string
+          original_name: string
+          storage_path: string
+          student_id: string
+          studio_id: string
+          submitted_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "assignment_attachments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       attach_studio_invoice_checkout: {
         Args: { p_invoice: string; p_key: string; p_session: string }
         Returns: undefined
       }
       begin_calendar_oauth: {
+        Args: {
+          p_actor: string
+          p_browser: string
+          p_state: string
+          p_studio: string
+          p_verifier: string
+        }
+        Returns: undefined
+      }
+      begin_gmail_delivery_oauth: {
         Args: {
           p_actor: string
           p_browser: string
@@ -5402,6 +5494,10 @@ export type Database = {
         Args: { p_browser: string; p_state: string }
         Returns: Json
       }
+      consume_gmail_delivery_oauth: {
+        Args: { p_browser: string; p_state: string }
+        Returns: Json
+      }
       correct_lesson_datetime: {
         Args: { p_key: string; p_value: Json }
         Returns: Json
@@ -5544,6 +5640,14 @@ export type Database = {
       get_material_assignment: { Args: { p_id: string }; Returns: Json }
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
+      gmail_delivery_oauth_refresh: {
+        Args: { p_client: string; p_email: string; p_studio: string }
+        Returns: string
+      }
+      gmail_delivery_oauth_status: {
+        Args: { p_client?: string; p_studio: string }
+        Returns: Json
+      }
       household_access_states: { Args: { p_student: string }; Returns: Json }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
       lesson_bulk_candidates: {
@@ -5605,6 +5709,16 @@ export type Database = {
           p_origin: string
           p_value: Json
           p_version: number
+        }
+        Returns: Json
+      }
+      manage_lesson_note_recovery: {
+        Args: {
+          p_action: string
+          p_launch_lesson_id: string
+          p_note_id: string
+          p_payload: Json
+          p_student_id: string
         }
         Returns: Json
       }
@@ -5734,6 +5848,10 @@ export type Database = {
         Args: { p_invoice: string; p_key: string }
         Returns: undefined
       }
+      remove_assignment_file: {
+        Args: { p_assignment: string; p_attachment: string }
+        Returns: undefined
+      }
       render_campaign_text: {
         Args: {
           p_email: string
@@ -5852,6 +5970,16 @@ export type Database = {
           p_studio: string
         }
         Returns: boolean
+      }
+      save_gmail_delivery_oauth: {
+        Args: {
+          p_actor: string
+          p_client: string
+          p_email: string
+          p_refresh: string
+          p_studio: string
+        }
+        Returns: undefined
       }
       save_material_study: {
         Args: {

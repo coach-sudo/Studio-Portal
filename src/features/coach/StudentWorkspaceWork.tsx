@@ -18,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import { loadWorkspaceResource } from "../../data/studentWorkspace";
 import { usePrivateIdentity } from "../../hooks/usePrivateIdentity";
 import { Dialog } from "../../components/Primitives";
+import { AssignmentAttachments } from "../../components/AssignmentAttachments";
 
 export function Work({
   data,
@@ -101,6 +102,15 @@ export function Work({
                       ? ` · due ${formatStudioDate(item.dueAt, data.settings.timezone)}`
                       : ""}
                   </small>
+                  {!isDemo && item.status === "completed" && (
+                    <AssignmentAttachments
+                      scope={{
+                        assignmentId: item.id,
+                        studentId: item.studentId,
+                        studioId: data.studioId,
+                      }}
+                    />
+                  )}
                 </div>
                 <Status tone={item.status === "completed" ? "good" : "neutral"}>
                   {item.status.replaceAll("_", " ")}

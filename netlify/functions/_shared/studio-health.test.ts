@@ -147,6 +147,8 @@ function runner(lease: string | null, unavailable?: string) {
         return Promise.resolve({ data: "stage-story" });
       if (name === "studio_health_read")
         return Promise.resolve({ data: { observations: [], issues: [] } });
+      if (name === "gmail_delivery_oauth_status")
+        return Promise.resolve({ data: null });
       if (name === "studio_health_evidence")
         return Promise.resolve(
           args?.p_service === unavailable
@@ -218,11 +220,15 @@ it("checks Google with bounded token and read requests, preserving results when 
   expect(
     rpc.mock.calls
       .map(([name]) => name)
-      .every((name) => name.startsWith("studio_health_")),
+      .every(
+        (name) =>
+          name.startsWith("studio_health_") ||
+          name === "gmail_delivery_oauth_status",
+      ),
   ).toBe(true);
 });
 
-it("reports revoked Google authorization without exposing the OAuth response", async () => {
+it("reports revoked Calendar authorization without attributing it to Gmail or exposing the OAuth response", async () => {
   syntheticGoogle();
   vi.stubGlobal(
     "fetch",
@@ -249,8 +255,8 @@ it("reports revoked Google authorization without exposing the OAuth response", a
       }),
       expect.objectContaining({
         service: "email",
-        authorization: "needs_review",
-        state: "attention",
+        authorization: "unknown",
+        configured: true,
       }),
     ]),
   );

@@ -1,5 +1,10 @@
 import { calendarOAuthConfig, calendarOAuthStudio } from "./calendar-oauth";
 import { activeCalendarRoles } from "./calendar-roles";
+import {
+  gmailGrantStatus,
+  gmailOAuthConfig,
+  legacyGoogleCredential,
+} from "./gmail-oauth";
 import { serviceClient } from "./supabase";
 import { z } from "zod";
 
@@ -120,15 +125,34 @@ export class GoogleAuthorizationError extends Error {
 
 export async function googleAccessToken(
   signal?: AbortSignal,
-  lane: "calendar" | "gmail" = "calendar",
+  lane: "calendar" | "gmail" | { gmailDeliveryStudio: string } = "calendar",
 ) {
-  const clientId =
-      Netlify.env.get("GOOGLE_CLIENT_ID") ||
-      Netlify.env.get("GOOGLE_OAUTH_CLIENT_ID"),
-    clientSecret =
-      Netlify.env.get("GOOGLE_CLIENT_SECRET") ||
-      Netlify.env.get("GOOGLE_OAUTH_CLIENT_SECRET");
-  let refreshToken = Netlify.env.get("GOOGLE_REFRESH_TOKEN");
+  let { clientId, clientSecret, refreshToken } = legacyGoogleCredential();
+  if (typeof lane === "object") {
+    const db = serviceClient();
+    const studio = await calendarOAuthStudio(db);
+    if (studio === lane.gmailDeliveryStudio) {
+      const config = gmailOAuthConfig();
+      const grant = await gmailGrantStatus(db, studio, config?.clientId);
+      if (grant) {
+        if (!config || !grant.clientMatches || grant.account !== config.account)
+          throw new GoogleAuthorizationError("configuration");
+        const stored = await db
+          .rpc("gmail_delivery_oauth_refresh", {
+            p_studio: studio,
+            p_email: config.account,
+            p_client: config.clientId,
+          })
+          .abortSignal(signal ?? AbortSignal.timeout(3000));
+        if (stored.error)
+          throw new Error("Gmail authorization could not be read.");
+        if (typeof stored.data !== "string" || !stored.data)
+          throw new GoogleAuthorizationError("authorization");
+        ({ clientId, clientSecret } = config);
+        refreshToken = stored.data;
+      }
+    }
+  }
   const oauth = lane === "calendar" ? calendarOAuthConfig() : null;
   if (oauth) {
     const db = serviceClient();
