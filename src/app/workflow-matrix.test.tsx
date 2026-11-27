@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
@@ -37,6 +37,18 @@ const renderGuardian = (path: string) =>
       </StudioStoreProvider>
     </QueryClientProvider>,
   );
+
+function pasteNote(dialog: HTMLElement, text: string) {
+  const editor = within(dialog).getByRole("textbox", {
+    name: "Note",
+    exact: true,
+  });
+  fireEvent.paste(editor, {
+    clipboardData: {
+      getData: (format: string) => (format === "text/plain" ? text : ""),
+    },
+  });
+}
 
 describe("50 start-to-finish studio workflows", () => {
   describe("coach — 20 workflows", () => {
@@ -239,10 +251,7 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("button", { name: /New note/i }),
       );
       const dialog = screen.getByRole("dialog");
-      await user.type(
-        within(dialog).getByLabelText("Note"),
-        "Private coaching observation.",
-      );
+      pasteNote(dialog, "Private coaching observation.");
       expect(within(dialog).getByLabelText("Note")).toHaveTextContent(
         "Private coaching observation.",
       );
@@ -260,10 +269,7 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("button", { name: /New note/i }),
       );
       const dialog = screen.getByRole("dialog");
-      await user.type(
-        within(dialog).getByLabelText("Note"),
-        "Great work today.",
-      );
+      pasteNote(dialog, "Great work today.");
       await user.click(
         within(dialog).getByRole("button", { name: "Review publication" }),
       );
