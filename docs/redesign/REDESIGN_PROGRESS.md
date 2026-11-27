@@ -41,7 +41,7 @@ The additive migrations are `20261126204459_release_c_lesson_note_recovery.sql` 
 
 TypeScript, the production-mode build, bundle gates, 67 focused tests and ten browser cases across Chromium and WebKit passed for the approved pilots. The browser cases included a loopback upload with actual multipart bytes and retry of the same uploaded asset after attachment failed. See [Release C pilot captures](VISUAL_ACCEPTANCE.md#release-c-writing-and-upload-evidence). Physical keyboard tests and real staged file authorization remain integration checks before broader use in dashboards or the full Actor Page redesign.
 
-The owner accepted Student and Household and reopened only the Coach editor on November 27. The correction uses the shared rich-text editor with semantic headings and nested lists, visible formatting state, accessible toolbar navigation, and a compact visual-viewport mode. The canvas and draft action stay accessible while the simulated keyboard is open. Separate publication review and private recovery remain in place. Physical Android Chrome and iOS Safari and the owner's review of the corrected Coach editor are publication gates.
+The owner accepted Student and Household and reopened only the Coach editor on November 27. The correction uses the shared rich-text editor with semantic headings and nested lists, visible formatting state, accessible toolbar navigation, and a compact visual-viewport mode. The canvas and draft action stay accessible in light and dark appearance while the simulated keyboard is open. Separate publication review and private recovery remain in place. Physical Android Chrome and iOS Safari and the owner's review of the corrected Coach editor are publication gates.
 
 ### Gmail connection recovery
 

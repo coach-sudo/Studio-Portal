@@ -182,4 +182,45 @@ test("the keyboard viewport keeps the canvas, selection, and private save reacha
     composer.getByRole("button", { name: "Review publication" }),
   ).toBeVisible();
   await expect(editor).toContainText("Keep the pause.");
+
+  await page.evaluate(() => {
+    document.documentElement.dataset.portalTheme = "dark";
+  });
+  await editor.fill(
+    "Rehearse each moment with a specific intention. Listen for a change before answering. ".repeat(
+      25,
+    ) + "Closing beat.",
+  );
+  await editor.press("ControlOrMeta+End");
+  await resize(330, 10);
+  await expect(composer).toHaveAttribute("data-keyboard", "true");
+  await expect(editor).toHaveCSS("background-color", "rgb(25, 41, 34)");
+  await expect(editor).toHaveCSS("color", "rgb(243, 245, 241)");
+  await expect(
+    composer.getByRole("button", { name: "Italic", exact: true }),
+  ).toHaveCSS("background-color", "rgb(25, 41, 34)");
+  await expect
+    .poll(() =>
+      editor.evaluate((element) => {
+        const selection = getSelection();
+        const canvas = element.closest(".lesson-note-main")!;
+        if (!selection?.focusNode || !element.contains(selection.focusNode))
+          return false;
+        const range = document.createRange();
+        range.setStart(selection.focusNode, selection.focusOffset);
+        range.collapse(true);
+        const caret = range.getBoundingClientRect();
+        const bounds = canvas.getBoundingClientRect();
+        return (
+          canvas.scrollTop > 0 &&
+          caret.height > 0 &&
+          caret.top >= bounds.top &&
+          caret.bottom <= bounds.bottom
+        );
+      }),
+    )
+    .toBe(true);
+  await composer.screenshot({
+    path: testInfo.outputPath("keyboard-open-dark.png"),
+  });
 });

@@ -85,6 +85,8 @@
   min-height: 320px;
   padding: clamp(16px, 3vw, 32px);
   font-size: 1.05rem;
+  background: var(--app-surface);
+  color: var(--ink);
 }
 
 .lesson-note-composer .writing-rich {
@@ -97,6 +99,13 @@
   gap: var(--space-1);
   background: var(--app-surface-soft);
   border-color: var(--app-border);
+}
+
+.lesson-note-composer
+  .rich-toolbar
+  button:not(:disabled, [aria-pressed="true"]) {
+  background: var(--app-surface);
+  color: var(--ink);
 }
 
 .lesson-note-composer .writing-toolbar-actions {
