@@ -15,6 +15,8 @@ export function LessonNoteComposer({
   lessons,
   timezone,
   note,
+  currentScript,
+  latestFeedback,
   attachments,
   initialLessonId,
   privateRecovery = false,
@@ -26,6 +28,8 @@ export function LessonNoteComposer({
   lessons: Lesson[];
   timezone: string;
   note?: Note;
+  currentScript?: string;
+  latestFeedback?: string;
   attachments: Array<{ id: string; title: string }>;
   initialLessonId?: string;
   privateRecovery?: boolean;
@@ -131,11 +135,31 @@ export function LessonNoteComposer({
 
   useEffect(() => {
     const viewport = window.visualViewport;
-    const dialog = workspace.current?.closest<HTMLElement>(
-      ".lesson-note-composer",
+    const form = workspace.current;
+    const dialog = form?.closest<HTMLElement>(".lesson-note-composer");
+    const canvas = form?.querySelector<HTMLElement>(".lesson-note-main");
+    if (!viewport || !dialog || !canvas) return;
+
+    const mobile = window.matchMedia(
+      "(max-width: 680px), (pointer: coarse) and (max-width: 1024px)",
     );
-    if (!viewport || !dialog) return;
-    const resize = () => {
+    let fullHeight = Math.max(window.innerHeight, viewport.height);
+    let frame = 0;
+    const update = () => {
+      const active = document.activeElement;
+      const editing =
+        active instanceof HTMLElement &&
+        canvas.contains(active) &&
+        (active.isContentEditable || active.matches("input, textarea"));
+      const alreadyOpen = dialog.dataset.keyboard === "true";
+      if (!editing && !alreadyOpen) fullHeight = viewport.height;
+      if (viewport.height > fullHeight) fullHeight = viewport.height;
+      const keyboard =
+        mobile.matches &&
+        Math.abs(viewport.scale - 1) < 0.02 &&
+        (editing || alreadyOpen) &&
+        Math.max(window.innerHeight, fullHeight) - viewport.height > 120;
+
       dialog.style.setProperty(
         "--writing-viewport-height",
         `${viewport.height}px`,
@@ -144,13 +168,59 @@ export function LessonNoteComposer({
         "--writing-viewport-top",
         `${viewport.offsetTop}px`,
       );
+      dialog.dataset.keyboard = String(keyboard);
+      dialog.dataset.writingBody = String(
+        keyboard && !active?.matches(".lesson-note-title input"),
+      );
+
+      if (
+        !keyboard ||
+        !(active instanceof HTMLElement) ||
+        !active.isContentEditable
+      )
+        return;
+      const selection = document.getSelection();
+      if (!selection?.focusNode || !active.contains(selection.focusNode))
+        return;
+      const caret = document.createRange();
+      caret.setStart(selection.focusNode, selection.focusOffset);
+      caret.collapse(true);
+      const position = caret.getBoundingClientRect();
+      if (!position.height) return;
+      const bounds = canvas.getBoundingClientRect();
+      const toolbar = canvas
+        .querySelector(".rich-toolbar")
+        ?.getBoundingClientRect();
+      const top = Math.max(bounds.top, toolbar?.bottom ?? bounds.top) + 8;
+      if (position.bottom > bounds.bottom - 12)
+        canvas.scrollTop += position.bottom - bounds.bottom + 12;
+      else if (position.top < top) canvas.scrollTop -= top - position.top;
     };
-    resize();
-    viewport.addEventListener("resize", resize);
-    viewport.addEventListener("scroll", resize);
+    const schedule = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(update);
+    };
+    const rotate = () => {
+      fullHeight = window.innerHeight;
+      schedule();
+    };
+    update();
+    viewport.addEventListener("resize", schedule);
+    viewport.addEventListener("scroll", schedule);
+    window.addEventListener("resize", schedule);
+    window.screen.orientation?.addEventListener("change", rotate);
+    dialog.addEventListener("focusin", schedule);
+    dialog.addEventListener("focusout", schedule);
+    document.addEventListener("selectionchange", schedule);
     return () => {
-      viewport.removeEventListener("resize", resize);
-      viewport.removeEventListener("scroll", resize);
+      window.cancelAnimationFrame(frame);
+      viewport.removeEventListener("resize", schedule);
+      viewport.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      window.screen.orientation?.removeEventListener("change", rotate);
+      dialog.removeEventListener("focusin", schedule);
+      dialog.removeEventListener("focusout", schedule);
+      document.removeEventListener("selectionchange", schedule);
     };
   }, []);
 
@@ -264,7 +334,7 @@ export function LessonNoteComposer({
     <Dialog
       title={expanded ? "Expanded editor" : saved ? "Edit note" : "New note"}
       className="lesson-note-composer"
-      description={student.fullName}
+      description={expanded ? student.fullName : undefined}
       onClose={close}
     >
       <form
@@ -301,6 +371,22 @@ export function LessonNoteComposer({
               {formatStudioDateTime(lesson.startsAt, timezone)}
             </p>
           )}
+          {(currentScript || latestFeedback) && (
+            <dl className="lesson-note-continuity">
+              {currentScript && (
+                <div>
+                  <dt>Current material</dt>
+                  <dd>{currentScript}</dd>
+                </div>
+              )}
+              {latestFeedback && (
+                <div>
+                  <dt>Latest published feedback</dt>
+                  <dd>{latestFeedback}</dd>
+                </div>
+              )}
+            </dl>
+          )}
           {saved && !lesson && (
             <p>
               Lesson details are unavailable. Reopen from the lesson before
@@ -323,6 +409,7 @@ export function LessonNoteComposer({
             <RichWritingArea
               key={editorReset}
               label="Note"
+              professional
               preserveInlineStyles
               initialHtml={editorInitial.html}
               initialText={editorInitial.text}
@@ -492,6 +579,7 @@ export function LessonNoteComposer({
                 {(!published || privateRecovery) && (
                   <button
                     type="button"
+                    className="lesson-note-private-save"
                     disabled={
                       locked ||
                       writeConflict ||
@@ -511,7 +599,7 @@ export function LessonNoteComposer({
                 )}
                 <button
                   type="button"
-                  className="primary"
+                  className="primary lesson-note-review-action"
                   disabled={!valid || !lesson || locked || writeConflict}
                   onClick={() => setReview(true)}
                 >

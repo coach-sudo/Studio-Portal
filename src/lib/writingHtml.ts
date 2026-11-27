@@ -8,6 +8,7 @@ export function cleanWritingHtml(html: string, preserveInlineStyles = false) {
       "br",
       "h2",
       "h3",
+      "h4",
       "strong",
       "b",
       "em",
@@ -23,6 +24,7 @@ export function cleanWritingHtml(html: string, preserveInlineStyles = false) {
       "href",
       "target",
       "rel",
+      "start",
       ...(preserveInlineStyles ? ["style"] : []),
     ],
   });

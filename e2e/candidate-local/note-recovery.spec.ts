@@ -74,8 +74,10 @@ test("a private note recovers formatted content after a lost receipt and refresh
     .fill("Recovery fixture");
   const editor = composer.getByRole("textbox", { name: "Note", exact: true });
   await editor.fill(marker);
-  await editor.press("Home");
-  await editor.press("Shift+End");
+  await editor.press("ControlOrMeta+a");
+  await expect
+    .poll(() => page.evaluate(() => getSelection()?.toString().trim()))
+    .toBe(marker);
   await composer.getByRole("button", { name: "Bold", exact: true }).click();
   await expect(composer.getByRole("alert")).toContainText("did not confirm");
   await expect(composer.getByRole("status")).not.toHaveText(
@@ -179,11 +181,18 @@ test("saving a working revision of a published note stays private until explicit
     expect(command.entityId).toBe(noteId);
     expect(command.expectedVersion).toBe(1);
     expect(command.payload).toMatchObject({
-      body: newBody,
       status: "published",
     });
+    expect(command.payload.body).toContain(newBody);
     expect(command.payload.bodyHtml).toMatch(
       /<(b|strong)>Approved revision text<\/(b|strong)>/,
+    );
+    expect(command.payload.bodyHtml).toContain("<h4>Practice plan</h4>");
+    expect(command.payload.bodyHtml).toContain(
+      '<ol start="4"><li><p>Rehearse</p><ul>',
+    );
+    expect(command.payload.bodyHtml).toContain(
+      'href="https://example.test/reference"',
     );
     publishCount += 1;
     publishedNote.body = command.payload.body;
@@ -198,9 +207,29 @@ test("saving a working revision of a published note stays private until explicit
   await expect(composer.getByRole("textbox", { name: "Title" })).toBeEditable();
   await expect(editor).toContainText(oldBody);
   await editor.fill(newBody);
-  await editor.press("Home");
-  await editor.press("Shift+End");
+  await editor.press("ControlOrMeta+a");
+  await expect
+    .poll(() => page.evaluate(() => getSelection()?.toString().trim()))
+    .toBe(newBody);
   await composer.getByRole("button", { name: "Bold", exact: true }).click();
+  await editor.press("ControlOrMeta+End");
+  await editor.press("Enter");
+  await editor.evaluate((element) => {
+    const content = new DataTransfer();
+    content.setData("text/plain", "Practice plan\nRehearse\nReference notes");
+    content.setData(
+      "text/html",
+      '<h4>Practice plan</h4><ol start="4"><li>Rehearse<ul><li><a href="https://example.test/reference"><em><u>Reference notes</u></em></a></li></ul></li></ol>',
+    );
+    element.dispatchEvent(
+      new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData: content,
+      }),
+    );
+  });
+  await expect(editor.locator("ol ul a")).toHaveText("Reference notes");
   await composer.getByRole("button", { name: "Save draft" }).click();
   await expect(composer.getByRole("status")).toHaveText(
     "Private recovery copy saved",
@@ -208,15 +237,30 @@ test("saving a working revision of a published note stays private until explicit
   expect(publishCount).toBe(0);
   expect(publishedNote.body).toBe(oldBody);
 
+  await page.reload();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(composer.getByRole("status")).toHaveText(
+    "Private draft recovered",
+  );
+  await expect(editor.locator("h4")).toHaveText("Practice plan");
+  await expect(editor.locator('ol[start="4"] ul a u')).toHaveText(
+    "Reference notes",
+  );
+
   await composer.getByRole("button", { name: "Review publication" }).click();
   await expect(
     composer.getByRole("heading", { name: "Review publication" }),
   ).toBeVisible();
+  await expect(
+    composer
+      .locator(".published-note-body ol ul a, .rich-editor-body ol ul a")
+      .filter({ visible: true }),
+  ).toHaveText("Reference notes");
   expect(publishCount).toBe(0);
   expect(publishedNote.body).toBe(oldBody);
   await composer.getByRole("button", { name: "Publish changes" }).click();
   await expect(composer.getByRole("status")).toHaveText("Published to student");
   expect(publishCount).toBe(1);
-  expect(publishedNote.body).toBe(newBody);
+  expect(publishedNote.body).toContain(newBody);
   expect(checkpoint).toBeNull();
 });

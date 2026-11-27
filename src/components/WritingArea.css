@@ -46,10 +46,56 @@ textarea.writing-area-long {
   min-width: 44px;
 }
 
-.writing-rich .rich-editor-body:empty::before {
+.writing-rich
+  .rich-editor-body:has(
+    > p:only-child > br.ProseMirror-trailingBreak:only-child
+  ):not(:focus)::before {
   content: attr(data-placeholder);
   color: var(--muted);
   pointer-events: none;
+  position: absolute;
+}
+
+.writing-rich .rich-toolbar button[aria-pressed="true"] {
+  background: var(--forest);
+  color: var(--on-forest);
+}
+
+:is(.rich-editor-body, .published-note-body, .rich-note-body) :where(ol, ul) {
+  padding-inline-start: 1.6em;
+}
+
+:is(.rich-editor-body, .published-note-body, .rich-note-body) :where(ul ul) {
+  list-style-type: circle;
+}
+
+:is(.rich-editor-body, .published-note-body, .rich-note-body)
+  :where(h2, h3, h4, p) {
+  margin-block: 0 0.65em;
+}
+
+:is(.rich-editor-body, .published-note-body, .rich-note-body) li > p {
+  margin-block: 0;
+}
+
+:is(.rich-editor-body, .published-note-body, .rich-note-body) :is(h2, h3, h4) {
+  margin-block: 1em 0.45em;
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+:is(.rich-editor-body, .published-note-body, .rich-note-body) h2 {
+  font-size: 1.65em;
+}
+
+:is(.rich-editor-body, .published-note-body, .rich-note-body) h3 {
+  font-size: 1.35em;
+}
+
+:is(.rich-editor-body, .published-note-body, .rich-note-body) h4 {
+  font-size: 1.14em;
 }
 
 .writing-link {

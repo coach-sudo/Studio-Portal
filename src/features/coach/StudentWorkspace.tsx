@@ -33,7 +33,7 @@ import {
 } from "react-router-dom";
 import { Dialog, Drawer, Status, Toggle } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
-import { lessonDraft } from "../../domain/coachingContext";
+import { coachingContext, lessonDraft } from "../../domain/coachingContext";
 import { uploadStudioFile } from "../../data/uploads";
 import { AddResourceFlow } from "../library/ResourceBrowser";
 import type {
@@ -192,6 +192,8 @@ export function StudentWorkspace() {
   if (!student) return <RecordUnavailable fallback="/coach/students" />;
 
   const base = `/coach/students/${student.id}`;
+  const noteContext =
+    dialog === "note" ? coachingContext(data, student.id) : undefined;
   const studentLessons = data.lessons
     .filter((item) => belongsToStudent(data, item, student.id))
     .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
@@ -916,6 +918,11 @@ export function StudentWorkspace() {
           lessons={studentLessons}
           timezone={data.settings.timezone}
           note={editingNote}
+          currentScript={noteContext?.scripts[0]?.title}
+          latestFeedback={
+            noteContext?.feedback.find((item) => item.id !== editingNote?.id)
+              ?.title
+          }
           attachments={data.materials.filter(
             (material) =>
               material.noteId &&

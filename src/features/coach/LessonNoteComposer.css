@@ -7,6 +7,10 @@
   overflow: hidden;
 }
 
+.workflow-dialog.lesson-note-composer > header {
+  padding: var(--space-3) var(--space-6);
+}
+
 .lesson-note-composer .lesson-note-workspace {
   padding: 0;
   display: grid;
@@ -36,11 +40,30 @@
   color: var(--ink);
 }
 
+.lesson-note-continuity {
+  display: grid;
+  gap: var(--space-4);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid
+    color-mix(in srgb, currentColor, transparent 65%);
+  overflow-wrap: anywhere;
+}
+
+.lesson-note-continuity dt {
+  font-size: var(--text-meta);
+}
+
+.lesson-note-continuity dd {
+  margin: 0;
+  font-weight: 650;
+}
+
 .lesson-note-main {
   min-width: 0;
   overflow: auto;
   min-height: 0;
   padding: var(--space-6);
+  overscroll-behavior: contain;
 }
 
 .lesson-note-context[hidden] + .lesson-note-main {
@@ -61,6 +84,25 @@
 .lesson-note-composer .rich-editor .rich-editor-body {
   min-height: 320px;
   padding: clamp(16px, 3vw, 32px);
+  font-size: 1.05rem;
+}
+
+.lesson-note-composer .writing-rich {
+  background: var(--app-surface);
+  color: var(--ink);
+  border-color: var(--app-border);
+}
+
+.lesson-note-composer .writing-rich .rich-toolbar {
+  gap: var(--space-1);
+  background: var(--app-surface-soft);
+  border-color: var(--app-border);
+}
+
+.lesson-note-composer .writing-toolbar-actions {
+  display: inline-flex;
+  gap: var(--space-1);
+  margin-inline-start: auto;
 }
 
 .lesson-note-footer {
@@ -70,7 +112,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-  padding: var(--space-3) var(--space-6);
+  padding: var(--space-2) var(--space-6);
   border-top: 1px solid var(--app-border);
   background: var(--app-surface);
 }
@@ -81,6 +123,8 @@
 }
 
 .lesson-note-composer .lesson-note-footer .form-actions {
+  display: flex;
+  flex-wrap: wrap;
   padding: 0;
   margin: 0;
 }
@@ -104,13 +148,20 @@
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
 
+  .workflow-dialog.lesson-note-composer > header {
+    padding-inline: var(--space-4);
+  }
+
   .lesson-note-context {
     grid-row: 1;
     padding: var(--space-2) var(--space-4);
+    background: var(--app-surface-soft);
+    color: var(--ink);
   }
 
   .lesson-note-composer .lesson-note-context h3,
-  .lesson-note-context .lesson-note-datetime {
+  .lesson-note-context .lesson-note-datetime,
+  .lesson-note-continuity {
     display: none;
   }
 
@@ -131,5 +182,99 @@
 
   .lesson-note-composer .rich-editor .rich-editor-body {
     min-height: 210px;
+  }
+
+  .lesson-note-composer .rich-toolbar {
+    padding: var(--space-1);
+  }
+}
+
+@media (max-width: 680px), (pointer: coarse) and (max-width: 1024px) {
+  .workflow-dialog.lesson-note-composer[data-keyboard="true"] {
+    position: fixed;
+    inset: var(--writing-viewport-top, 0) 0 auto;
+    width: 100%;
+    height: var(--writing-viewport-height, 100dvh);
+    border-radius: 0;
+    padding-top: 0;
+  }
+
+  .lesson-note-composer[data-keyboard="true"] > header {
+    padding: 0 var(--space-3);
+  }
+
+  .lesson-note-composer[data-keyboard="true"] > header h2 {
+    font-size: var(--text-body);
+  }
+
+  .lesson-note-composer[data-keyboard="true"] > header p,
+  .lesson-note-composer[data-keyboard="true"] .lesson-note-context,
+  .lesson-note-composer[data-keyboard="true"] .writing-toolbar-actions,
+  .lesson-note-composer[data-keyboard="true"] .lesson-note-review-action {
+    display: none;
+  }
+
+  .lesson-note-composer[data-keyboard="true"] .lesson-note-workspace {
+    grid-template: minmax(0, 1fr) auto / minmax(0, 1fr);
+  }
+
+  .lesson-note-composer[data-keyboard="true"] .lesson-note-main {
+    grid-area: 1 / 1;
+    padding: 0 var(--space-2) var(--space-2);
+  }
+
+  .lesson-note-composer[data-writing-body="true"]
+    .lesson-note-title:not(:focus-within) {
+    display: none;
+  }
+
+  .lesson-note-composer[data-keyboard="true"] .writing-rich {
+    overflow: visible;
+  }
+
+  .lesson-note-composer[data-keyboard="true"] .rich-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    background: var(--app-surface);
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+
+  .lesson-note-composer[data-keyboard="true"] .rich-toolbar > button {
+    flex: none;
+  }
+
+  .lesson-note-composer[data-keyboard="true"] .rich-editor .rich-editor-body {
+    min-height: 120px;
+    padding: var(--space-3);
+  }
+
+  .lesson-note-composer[data-keyboard="true"] .lesson-note-footer {
+    grid-area: 2 / 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 0 var(--space-3);
+    gap: var(--space-2);
+  }
+
+  .lesson-note-composer[data-keyboard="true"]
+    .lesson-note-footer
+    > :first-child {
+    max-height: 4.5rem;
+    overflow: auto;
+  }
+
+  .lesson-note-composer[data-keyboard="true"]
+    .lesson-note-footer
+    [role="status"] {
+    font-size: 0.75rem;
+  }
+
+  .lesson-note-composer[data-keyboard="true"] .lesson-note-private-save {
+    min-height: 44px;
+    white-space: nowrap;
   }
 }
