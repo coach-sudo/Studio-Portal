@@ -147,6 +147,13 @@ export function toAppError(error: unknown): AppError {
         "This request key was already used for different details. Review the change again.",
       cause: error,
     });
+  if (message === "ASSIGNMENT_ATTACHMENTS_PREVENT_MERGE")
+    return new AppError("VALIDATION_FAILED", {
+      status: 422,
+      message:
+        "Keep the student profiles separate. The profile selected for removal has private assignment attachments.",
+      cause: error,
+    });
   if (message.includes("REVIEW_EXPIRED"))
     return new AppError("REVIEW_REQUIRED", {
       status: 409,

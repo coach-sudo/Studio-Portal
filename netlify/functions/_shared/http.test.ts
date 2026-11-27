@@ -19,6 +19,17 @@ describe("structured API errors", () => {
       }).message,
     ).toContain("Check or cancel");
   });
+
+  it("explains why a student profile with assignment attachments cannot be merged", () => {
+    expect(
+      toAppError({ message: "ASSIGNMENT_ATTACHMENTS_PREVENT_MERGE" }),
+    ).toMatchObject({
+      code: "VALIDATION_FAILED",
+      status: 422,
+      message:
+        "Keep the student profiles separate. The profile selected for removal has private assignment attachments.",
+    });
+  });
   it.each([
     ["FORBIDDEN", "FORBIDDEN", 403, false],
     ["VERSION_CONFLICT:7", "VERSION_CONFLICT", 409, false],

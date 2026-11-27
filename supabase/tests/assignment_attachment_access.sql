@@ -122,6 +122,23 @@ select set_config('request.jwt.claim.sub', 'aa000000-0000-4000-8000-000000000002
 select is((select count(*) from public.assignment_attachments), 0::bigint, 'Peer student cannot see attachment metadata');
 select is((select count(*) from storage.objects where name=current_setting('test.assignment_files.path')),
   0::bigint, 'Peer student cannot download submitted attachment');
+select set_config('request.jwt.claim.sub', 'aa000000-0000-4000-8000-000000000003', true);
+select throws_ok($$select public.merge_studio_students(
+  'aa000000-0000-4000-8000-000000000012',
+  'aa000000-0000-4000-8000-000000000011')$$, '23514',
+  'ASSIGNMENT_ATTACHMENTS_PREVENT_MERGE',
+  'A roster merge cannot move an assignment with attachments to a different student');
+select set_config('request.jwt.claim.sub', 'aa000000-0000-4000-8000-000000000001', true);
+select is((select count(*) from public.assignment_attachments where student_id =
+  'aa000000-0000-4000-8000-000000000011'), 1::bigint,
+  'A blocked merge keeps the file linked to its original assignment and student');
+select is((select count(*) from storage.objects where name=current_setting('test.assignment_files.path')),
+  1::bigint, 'The original student can still download their file after a blocked merge');
+select set_config('request.jwt.claim.sub', 'aa000000-0000-4000-8000-000000000003', true);
+select lives_ok($$select public.merge_studio_students(
+  'aa000000-0000-4000-8000-000000000011',
+  'aa000000-0000-4000-8000-000000000012')$$,
+  'Assignments without attachments can still move during a roster merge');
 reset role;
 set local role service_role;
 select lives_ok($$update public.assignments set status = 'reopened' where id = current_setting('test.assignment_files.id')::uuid$$,
