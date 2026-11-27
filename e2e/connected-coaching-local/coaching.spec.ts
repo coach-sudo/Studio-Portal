@@ -111,8 +111,10 @@ test("professional notes keep formatting and actions available on tablet and pho
     const field = editor.getByRole("textbox", { name: "Note", exact: true });
     if (width === 768) {
       await field.fill("Objectives and tactics");
-      await field.press("Home");
-      await field.press("Shift+End");
+      await field.press("ControlOrMeta+a");
+      await expect
+        .poll(() => page.evaluate(() => getSelection()?.toString().trim()))
+        .toBe("Objectives and tactics");
       await editor.getByRole("button", { name: "Bold", exact: true }).click();
       await expect(field.locator("b, strong")).toHaveText(
         "Objectives and tactics",
