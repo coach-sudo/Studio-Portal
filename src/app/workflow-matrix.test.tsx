@@ -41,7 +41,6 @@ const renderGuardian = (path: string) =>
 function pasteNote(dialog: HTMLElement, text: string) {
   const editor = within(dialog).getByRole("textbox", {
     name: "Note",
-    exact: true,
   });
   fireEvent.paste(editor, {
     clipboardData: {
